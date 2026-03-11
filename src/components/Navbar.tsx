@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import logo from "@/assets/bateen-logo.png";
@@ -37,11 +38,12 @@ const Navbar = () => {
               {link.label}
             </a>
           ))}
-          <ContactDialog>
-            <button className="bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
-              Contact Us
-            </button>
-          </ContactDialog>
+          <Link
+            to="/contact"
+            className="bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            Contact Us
+          </Link>
         </div>
 
         <button onClick={() => setOpen(!open)} className="md:hidden text-foreground">
@@ -65,11 +67,13 @@ const Navbar = () => {
               {link.label}
             </a>
           ))}
-          <ContactDialog>
-            <button className="block w-full mt-2 bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold text-center">
-              Contact Us
-            </button>
-          </ContactDialog>
+          <Link
+            to="/contact"
+            onClick={() => setOpen(false)}
+            className="block w-full mt-2 bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold text-center"
+          >
+            Contact Us
+          </Link>
         </motion.div>
       )}
     </motion.nav>
