@@ -67,11 +67,13 @@ const Navbar = () => {
               {link.label}
             </a>
           ))}
-          <ContactDialog>
-            <button className="block w-full mt-2 bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold text-center">
-              Contact Us
-            </button>
-          </ContactDialog>
+          <Link
+            to="/contact"
+            onClick={() => setOpen(false)}
+            className="block w-full mt-2 bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold text-center"
+          >
+            Contact Us
+          </Link>
         </motion.div>
       )}
     </motion.nav>
