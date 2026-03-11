@@ -29,7 +29,7 @@ const CTASection = () => {
               </button>
             </ContactDialog>
             <p className="text-sm text-muted-foreground mt-4">
-              Or email us at hello@bateen.ai
+              Or email us at info@bateen.ai
             </p>
           </div>
         </motion.div>
