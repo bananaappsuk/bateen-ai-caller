@@ -111,6 +111,6 @@
   }
   .neon-line {
     height: 1px;
-    background: linear-gradient(90deg, transparent, hsl(270 80% 65%), hsl(185 80% 55%), transparent);
+    background: linear-gradient(90deg, transparent, hsl(270 80% 55%), hsl(185 80% 45%), transparent);
   }
 }
