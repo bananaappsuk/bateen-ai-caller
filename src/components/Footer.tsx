@@ -15,7 +15,7 @@ const Footer = () => {
             <a href="#demo" className="hover:text-foreground transition-colors">Contact</a>
           </div>
           <p className="text-sm text-muted-foreground">
-            © 2025 Bateen.ai — All rights reserved.
+            © 2026 Bateen.ai — All rights reserved.
           </p>
         </div>
       </div>
