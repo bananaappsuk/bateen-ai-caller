@@ -116,9 +116,10 @@ const ContactDialog = ({ children }: ContactDialogProps) => {
           </div>
           <Button
             type="submit"
+            disabled={submitting}
             className="w-full bg-gradient-cta text-secondary-foreground font-bold hover:opacity-90"
           >
-            Submit
+            {submitting ? "Submitting..." : "Submit"}
           </Button>
         </form>
       </DialogContent>
