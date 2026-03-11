@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ContactDialogProps {
   children: React.ReactNode;
@@ -20,10 +21,25 @@ const ContactDialog = ({ children }: ContactDialogProps) => {
     message: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
       toast.error("Please fill in all required fields.");
+      return;
+    }
+    setSubmitting(true);
+    const { error } = await supabase.from("contact_submissions").insert({
+      name: form.name.trim(),
+      company: form.company.trim() || null,
+      email: form.email.trim(),
+      phone: form.phone.trim() || null,
+      message: form.message.trim(),
+    });
+    setSubmitting(false);
+    if (error) {
+      toast.error("Something went wrong. Please try again.");
       return;
     }
     toast.success("Thank you! We'll be in touch shortly.");
@@ -100,9 +116,10 @@ const ContactDialog = ({ children }: ContactDialogProps) => {
           </div>
           <Button
             type="submit"
+            disabled={submitting}
             className="w-full bg-gradient-cta text-secondary-foreground font-bold hover:opacity-90"
           >
-            Submit
+            {submitting ? "Submitting..." : "Submit"}
           </Button>
         </form>
       </DialogContent>
