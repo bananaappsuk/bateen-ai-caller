@@ -37,12 +37,11 @@ const Navbar = () => {
               {link.label}
             </a>
           ))}
-          <a
-            href="#demo"
-            className="bg-gradient-cta text-secondary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-          >
-            Book a Demo
-          </a>
+          <ContactDialog>
+            <button className="bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+              Contact Us
+            </button>
+          </ContactDialog>
         </div>
 
         <button onClick={() => setOpen(!open)} className="md:hidden text-foreground">
