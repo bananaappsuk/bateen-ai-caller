@@ -4,10 +4,10 @@ import { Menu, X } from "lucide-react";
 import logo from "@/assets/bateen-logo.png";
 
 const navLinks = [
+  { label: "About", href: "#about" },
   { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
+  { label: "Case Studies", href: "#case-studies" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Countries", href: "#countries" },
 ];
 
 const Navbar = () => {

@@ -79,11 +79,11 @@
 @layer utilities {
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(270 80% 70%), hsl(185 80% 60%));
+    background-image: linear-gradient(135deg, hsl(270 80% 50%), hsl(185 80% 40%));
   }
   .text-gradient-pink {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(270 80% 70%), hsl(300 70% 65%));
+    background-image: linear-gradient(135deg, hsl(270 80% 50%), hsl(300 70% 55%));
   }
   .bg-gradient-hero {
     background: var(--gradient-hero);

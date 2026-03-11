@@ -1,7 +1,9 @@
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
+import AboutSection from "@/components/AboutSection";
 import FeaturesSection from "@/components/FeaturesSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
+import CaseStudiesSection from "@/components/CaseStudiesSection";
 import PricingSection from "@/components/PricingSection";
 import CountriesSection from "@/components/CountriesSection";
 import CTASection from "@/components/CTASection";
@@ -12,8 +14,10 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <HeroSection />
+      <AboutSection />
       <FeaturesSection />
       <HowItWorksSection />
+      <CaseStudiesSection />
       <PricingSection />
       <CountriesSection />
       <CTASection />
