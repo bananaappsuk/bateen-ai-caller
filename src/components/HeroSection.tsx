@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Phone, Zap, BarChart3 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import ContactDialog from "@/components/ContactDialog";
 
 const stats = [
   { icon: Phone, value: "300+", label: "Businesses Served" },
