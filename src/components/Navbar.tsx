@@ -38,11 +38,12 @@ const Navbar = () => {
               {link.label}
             </a>
           ))}
-          <ContactDialog>
-            <button className="bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
-              Contact Us
-            </button>
-          </ContactDialog>
+          <Link
+            to="/contact"
+            className="bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            Contact Us
+          </Link>
         </div>
 
         <button onClick={() => setOpen(!open)} className="md:hidden text-foreground">
