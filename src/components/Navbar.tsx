@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import logo from "@/assets/bateen-logo.png";
+import ContactDialog from "@/components/ContactDialog";
 
 const navLinks = [
   { label: "About", href: "#about" },
