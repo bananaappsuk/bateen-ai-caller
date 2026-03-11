@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Phone, Zap, BarChart3 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import ContactDialog from "@/components/ContactDialog";
 
 const stats = [
   { icon: Phone, value: "300+", label: "Businesses Served" },
@@ -42,12 +43,11 @@ const HeroSection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <a
-              href="#demo"
-              className="bg-gradient-cta text-secondary-foreground px-8 py-3.5 rounded-lg text-lg font-bold shadow-glow-lg hover:opacity-90 transition-all"
-            >
-              Schedule a Demo
-            </a>
+            <ContactDialog>
+              <button className="bg-gradient-cta text-primary-foreground px-8 py-3.5 rounded-lg text-lg font-bold shadow-glow-lg hover:opacity-90 transition-all">
+                Schedule a Demo
+              </button>
+            </ContactDialog>
             <a
               href="#how-it-works"
               className="glass-card px-8 py-3.5 rounded-lg text-lg font-semibold text-foreground hover:bg-muted/80 transition-all"

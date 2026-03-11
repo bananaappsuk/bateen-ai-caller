@@ -2,12 +2,13 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import logo from "@/assets/bateen-logo.png";
+import ContactDialog from "@/components/ContactDialog";
 
 const navLinks = [
+  { label: "About", href: "#about" },
   { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
+  { label: "Case Studies", href: "#case-studies" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Countries", href: "#countries" },
 ];
 
 const Navbar = () => {
@@ -36,12 +37,11 @@ const Navbar = () => {
               {link.label}
             </a>
           ))}
-          <a
-            href="#demo"
-            className="bg-gradient-cta text-secondary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-          >
-            Book a Demo
-          </a>
+          <ContactDialog>
+            <button className="bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+              Contact Us
+            </button>
+          </ContactDialog>
         </div>
 
         <button onClick={() => setOpen(!open)} className="md:hidden text-foreground">
@@ -65,12 +65,11 @@ const Navbar = () => {
               {link.label}
             </a>
           ))}
-          <a
-            href="#demo"
-            className="block mt-2 bg-gradient-cta text-secondary-foreground px-5 py-2 rounded-lg text-sm font-semibold text-center"
-          >
-            Book a Demo
-          </a>
+          <ContactDialog>
+            <button className="block w-full mt-2 bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold text-center">
+              Contact Us
+            </button>
+          </ContactDialog>
         </motion.div>
       )}
     </motion.nav>
