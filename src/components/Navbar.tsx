@@ -6,10 +6,10 @@ import logo from "@/assets/bateen-logo.png";
 import ContactDialog from "@/components/ContactDialog";
 
 const navLinks = [
-  { label: "About", href: "#about" },
-  { label: "Features", href: "#features" },
-  { label: "Case Studies", href: "#case-studies" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "About", href: "/#about" },
+  { label: "Features", href: "/#features" },
+  { label: "Case Studies", href: "/#case-studies" },
+  { label: "Pricing", href: "/#pricing" },
 ];
 
 const Navbar = () => {
