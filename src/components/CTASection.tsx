@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { CalendarDays } from "lucide-react";
-import ContactDialog from "@/components/ContactDialog";
 
 const CTASection = () => {
   return (
