@@ -46,9 +46,14 @@ const PricingSection = () => {
             <span className="font-display text-lg font-bold text-foreground">Pay As You Use</span>
           </div>
 
-          <div className="mb-8">
+          <div className="mb-4">
             <span className="text-6xl font-display font-black text-gradient">20p</span>
             <span className="text-muted-foreground text-lg ml-2">/minute</span>
+          </div>
+
+          <div className="mb-8 p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <span className="text-sm text-muted-foreground">One-time setup fee: </span>
+            <span className="font-display font-bold text-foreground">£500</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10">

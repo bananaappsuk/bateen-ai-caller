@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { CalendarDays } from "lucide-react";
-import ContactDialog from "@/components/ContactDialog";
 
 const CTASection = () => {
   return (
@@ -23,13 +22,16 @@ const CTASection = () => {
               Schedule a personalised demo and see how Bateen AI Caller can transform
               your lead generation process.
             </p>
-            <ContactDialog>
-              <button className="inline-block bg-gradient-cta text-primary-foreground px-10 py-4 rounded-xl font-bold text-lg shadow-glow hover:opacity-90 transition-all">
-                Book a Demo
-              </button>
-            </ContactDialog>
+            <a
+              href="https://meetings-eu1.hubspot.com/admin-bateen"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-gradient-cta text-primary-foreground px-10 py-4 rounded-xl font-bold text-lg shadow-glow hover:opacity-90 transition-all"
+            >
+              Book a Demo
+            </a>
             <p className="text-sm text-muted-foreground mt-4">
-              Or email us at info@bateen.ai
+              Or email us at admin@bateen.ai
             </p>
           </div>
         </motion.div>
