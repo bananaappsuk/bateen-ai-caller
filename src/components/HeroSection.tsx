@@ -43,11 +43,14 @@ const HeroSection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <ContactDialog>
-              <button className="bg-gradient-cta text-primary-foreground px-8 py-3.5 rounded-lg text-lg font-bold shadow-glow-lg hover:opacity-90 transition-all">
-                Schedule a Demo
-              </button>
-            </ContactDialog>
+            <a
+              href="https://meetings-eu1.hubspot.com/admin-bateen"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-gradient-cta text-primary-foreground px-8 py-3.5 rounded-lg text-lg font-bold shadow-glow-lg hover:opacity-90 transition-all"
+            >
+              Book a Demo
+            </a>
             <a
               href="#how-it-works"
               className="glass-card px-8 py-3.5 rounded-lg text-lg font-semibold text-foreground hover:bg-muted/80 transition-all"
