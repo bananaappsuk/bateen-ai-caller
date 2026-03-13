@@ -10,6 +10,7 @@ const navLinks = [
   { label: "Features", href: "/#features" },
   { label: "Case Studies", href: "/#case-studies" },
   { label: "Pricing", href: "/#pricing" },
+  { label: "FAQ", href: "/faq" },
 ];
 
 const Navbar = () => {
@@ -29,15 +30,25 @@ const Navbar = () => {
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.href.startsWith("/") && !link.href.startsWith("/#") ? (
+              <Link
+                key={link.label}
+                to={link.href}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                href={link.href}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </a>
+            )
+          )}
           <Link
             to="/contact"
             className="bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
@@ -57,16 +68,27 @@ const Navbar = () => {
           animate={{ opacity: 1, height: "auto" }}
           className="md:hidden bg-background/95 backdrop-blur-xl border-t border-border/50 px-4 pb-4"
         >
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              onClick={() => setOpen(false)}
-              className="block py-3 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.href.startsWith("/") && !link.href.startsWith("/#") ? (
+              <Link
+                key={link.label}
+                to={link.href}
+                onClick={() => setOpen(false)}
+                className="block py-3 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className="block py-3 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </a>
+            )
+          )}
           <Link
             to="/contact"
             onClick={() => setOpen(false)}
