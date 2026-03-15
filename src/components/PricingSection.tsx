@@ -167,20 +167,27 @@ const PricingSection = () => {
           <h3 className="font-display text-xl font-bold text-foreground text-center mb-6">
             Integration Setup Payment
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {setupTiers.map((tier, i) => (
-              <a
+              <div
                 key={i}
-                href="https://buy.stripe.com/7sY8wP2Ao0gn4vC9X7a3u03"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="glass-card rounded-2xl p-6 text-center hover:shadow-glow transition-all duration-300 block"
+                className="glass-card rounded-2xl p-6 text-center"
               >
                 <h4 className="font-display text-base font-bold text-foreground mb-2">{tier.type}</h4>
                 <p className="text-2xl font-display font-black text-gradient mb-3">{tier.price}</p>
                 <p className="text-sm text-muted-foreground">{tier.details}</p>
-              </a>
+              </div>
             ))}
+          </div>
+          <div className="text-center">
+            <a
+              href="https://buy.stripe.com/7sY8wP2Ao0gn4vC9X7a3u03"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-gradient-cta text-primary-foreground px-8 py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity"
+            >
+              Pay Integration Setup
+            </a>
           </div>
         </motion.div>
 
