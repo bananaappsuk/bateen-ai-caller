@@ -68,7 +68,7 @@ const ContactPage = () => {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="h-full"
             >
-              <div className="glass-card rounded-2xl p-8 space-y-6">
+              <div className="glass-card rounded-2xl p-8 space-y-6 h-full">
                 <h2 className="text-2xl font-display font-bold text-foreground">
                   Contact Information
                 </h2>
