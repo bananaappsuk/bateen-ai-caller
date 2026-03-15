@@ -122,8 +122,9 @@ const ContactPage = () => {
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
+              className="h-full"
             >
-              <div className="glass-card rounded-2xl p-8">
+              <div className="glass-card rounded-2xl p-8 h-full">
                 <h2 className="text-2xl font-display font-bold text-foreground mb-6">
                   Send Us a Message
                 </h2>
