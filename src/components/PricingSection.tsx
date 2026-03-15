@@ -165,18 +165,21 @@ const PricingSection = () => {
           className="max-w-4xl mx-auto"
         >
           <h3 className="font-display text-xl font-bold text-foreground text-center mb-6">
-            Integration Setup <span className="text-muted-foreground font-normal text-base">(one-time)</span>
+            Integration Setup Payment
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {setupTiers.map((tier, i) => (
-              <div
+              <a
                 key={i}
-                className="glass-card rounded-2xl p-6 text-center hover:shadow-glow transition-all duration-300"
+                href="https://buy.stripe.com/7sY8wP2Ao0gn4vC9X7a3u03"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-card rounded-2xl p-6 text-center hover:shadow-glow transition-all duration-300 block"
               >
                 <h4 className="font-display text-base font-bold text-foreground mb-2">{tier.type}</h4>
                 <p className="text-2xl font-display font-black text-gradient mb-3">{tier.price}</p>
                 <p className="text-sm text-muted-foreground">{tier.details}</p>
-              </div>
+              </a>
             ))}
           </div>
         </motion.div>
