@@ -29,17 +29,11 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* CEO & Company Details */}
+          {/* Company */}
           <div>
             <h4 className="font-display text-sm font-bold text-foreground mb-4">Company</h4>
             <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-              <div className="flex items-start gap-2">
-                <User className="w-4 h-4 mt-0.5 text-secondary flex-shrink-0" />
-                <div>
-                  <p className="text-foreground font-medium">Sriram Angajala</p>
-                  <p>CEO, BATEEN AI LTD</p>
-                </div>
-              </div>
+              <p className="text-foreground font-medium">BATEEN AI LTD</p>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5 text-secondary flex-shrink-0" />
                 <p>20 Wenlock Road, London, England, N1 7GU</p>
@@ -48,9 +42,27 @@ const Footer = () => {
                 <Mail className="w-4 h-4 text-secondary flex-shrink-0" />
                 <a href="mailto:admin@bateen.ai" className="hover:text-foreground transition-colors">admin@bateen.ai</a>
               </div>
+            </div>
+          </div>
+
+          {/* Get In Touch */}
+          <div>
+            <h4 className="font-display text-sm font-bold text-foreground mb-4">Get In Touch</h4>
+            <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <User className="w-4 h-4 mt-0.5 text-secondary flex-shrink-0" />
+                <div>
+                  <p className="text-foreground font-medium">Sriram Angajala</p>
+                  <p>CEO</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-secondary flex-shrink-0" />
+                <a href="mailto:Sriram@bateen.ai" className="hover:text-foreground transition-colors">Sriram@bateen.ai</a>
+              </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-secondary flex-shrink-0" />
-                <a href="tel:07453289655" className="hover:text-foreground transition-colors">07453 289 655</a>
+                <a href="tel:+447453289655" className="hover:text-foreground transition-colors">+44 7453 289655</a>
               </div>
             </div>
           </div>
