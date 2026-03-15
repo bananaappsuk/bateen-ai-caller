@@ -165,7 +165,7 @@ const PricingSection = () => {
           className="max-w-4xl mx-auto"
         >
           <h3 className="font-display text-xl font-bold text-foreground text-center mb-6">
-            Integration Setup <span className="text-muted-foreground font-normal text-base">(one-time)</span>
+            Integration Setup Payment
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {setupTiers.map((tier, i) => (

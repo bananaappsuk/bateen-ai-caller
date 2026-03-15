@@ -37,9 +37,9 @@ const HeroSection = () => {
             <span className="text-foreground">Phone Outreach</span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground mb-10 font-body leading-relaxed">
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-primary-foreground mb-10 font-body leading-relaxed">
             Bateen AI Caller makes hundreds of simultaneous outbound calls with natural-sounding
-            AI voice agents. Qualify leads, book meetings, and scale your outreach — automatically.
+            AI voice agents. Qualify leads, book meetings, and scale your outreach automatically.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
