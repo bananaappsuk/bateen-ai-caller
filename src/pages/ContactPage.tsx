@@ -76,40 +76,50 @@ const ContactPage = () => {
                   Have questions about Bateen AI Caller? Reach out to us and we'll respond as soon as possible.
                 </p>
 
-                <div className="space-y-5">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Mail className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <a href="mailto:admin@bateen.ai" className="text-foreground font-medium hover:text-primary transition-colors">
-                        admin@bateen.ai
-                      </a>
-                    </div>
+                {/* Company Section */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-display font-bold text-foreground mb-3">Company</h3>
+                  <p className="text-foreground font-medium mb-1">BATEEN AI LTD</p>
+                  <div className="flex items-start gap-3 mb-2">
+                    <MapPin className="w-4 h-4 mt-0.5 text-primary shrink-0" />
+                    <p className="text-muted-foreground">20 Wenlock Road, London, England, N1 7GU</p>
                   </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Phone className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Phone</p>
-                      <a href="tel:07453289655" className="text-foreground font-medium hover:text-primary transition-colors">
-                        07453289655
-                      </a>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <Mail className="w-4 h-4 text-primary shrink-0" />
+                    <a href="mailto:admin@bateen.ai" className="text-foreground font-medium hover:text-primary transition-colors">admin@bateen.ai</a>
                   </div>
+                </div>
 
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <MapPin className="w-5 h-5 text-primary" />
+                {/* Get In Touch Section */}
+                <div>
+                  <h3 className="text-lg font-display font-bold text-foreground mb-3">Get In Touch</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Mail className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-foreground font-medium">Sriram Angajala - CEO</p>
+                        <a href="mailto:Sriram@bateen.ai" className="text-muted-foreground hover:text-primary transition-colors">Sriram@bateen.ai</a>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Address</p>
-                      <p className="text-foreground font-medium">
-                        Bateen AI, United Kingdom
-                      </p>
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Phone className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Phone</p>
+                        <a href="tel:+447453289655" className="text-foreground font-medium hover:text-primary transition-colors">+44 7453 289655</a>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <MapPin className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Location</p>
+                        <p className="text-foreground font-medium">United Kingdom</p>
+                      </div>
                     </div>
                   </div>
                 </div>
