@@ -60,13 +60,13 @@ const ContactPage = () => {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto items-stretch">
             {/* Contact Info */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="space-y-8"
+              className="h-full"
             >
               <div className="glass-card rounded-2xl p-8 space-y-6">
                 <h2 className="text-2xl font-display font-bold text-foreground">
