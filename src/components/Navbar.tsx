@@ -24,9 +24,8 @@ const Navbar = () => {
       className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b border-border/50 bg-background/70"
     >
       <div className="container mx-auto flex items-center justify-between py-3 px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <img src={logo} alt="Bateen AI" className="h-10 w-auto" />
-          <span className="font-display text-lg font-bold text-gradient hidden sm:inline">AI Caller</span>
+        <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center">
+          <img src={logo} alt="AI Caller" className="h-14 w-auto" />
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
