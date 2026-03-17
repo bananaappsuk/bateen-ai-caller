@@ -25,7 +25,7 @@ const Navbar = () => {
     >
       <div className="container mx-auto flex items-center justify-between py-3 px-4">
         <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center">
-          <img src={logo} alt="AI Caller" className="h-28 w-auto" />
+          <img src={logo} alt="AI Caller" className="h-14 w-auto" />
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
