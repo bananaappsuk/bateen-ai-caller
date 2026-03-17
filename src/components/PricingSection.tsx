@@ -186,7 +186,7 @@ const PricingSection = () => {
               rel="noopener noreferrer"
               className="inline-block bg-gradient-cta text-primary-foreground px-8 py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity"
             >
-              Pay Integration Setup
+              Subscribe & Pay
             </a>
           </div>
         </motion.div>
