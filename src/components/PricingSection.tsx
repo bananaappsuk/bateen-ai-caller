@@ -17,17 +17,17 @@ const coreFeatures = [
 const setupTiers = [
   {
     type: "Simple",
-    price: "£500 – £1,000",
+    price: "£500",
     details: "CSV upload, basic script, no CRM",
   },
   {
     type: "Standard",
-    price: "£1,500 – £3,000",
+    price: "£1,000",
     details: "CRM integration, custom script, lead rules",
   },
   {
     type: "Complex",
-    price: "£3,000 – £5,000",
+    price: "£3,000",
     details: "Multiple CRMs, advanced flows, voice cloning",
   },
 ];
