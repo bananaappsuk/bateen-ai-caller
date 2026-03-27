@@ -139,7 +139,7 @@ const FAQPage = () => {
               <span className="text-gradient">Frequently Asked Questions</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Everything you need to know about Bateen AI Caller.
+              Everything you need to know about AI Tele Caller.
             </p>
           </motion.div>
 

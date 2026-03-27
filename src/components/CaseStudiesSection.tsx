@@ -43,7 +43,7 @@ const CaseStudiesSection = () => {
             <span className="text-gradient">Case Studies</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            See how businesses are transforming their outreach with Bateen AI Caller
+            See how businesses are transforming their outreach with AI Tele Caller
           </p>
         </motion.div>
 
