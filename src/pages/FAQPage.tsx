@@ -13,8 +13,8 @@ const faqs = [
     category: "Product",
     questions: [
       {
-        q: "What is Bateen AI Caller?",
-        a: "Bateen AI Caller is AI phone calling software that makes outbound calls, sounds completely human, qualifies leads automatically, and syncs everything to your CRM. It works 24/7 without breaks.",
+        q: "What is AI Tele Caller?",
+        a: "AI Tele Caller is AI phone calling software that makes outbound calls, sounds completely human, qualifies leads automatically, and syncs everything to your CRM. It works 24/7 without breaks.",
       },
       {
         q: "How natural does it sound?",
