@@ -24,7 +24,7 @@ const caseStudies = [
     problem:
       "Wingrove Cafe wanted to promote new catering services and event bookings to local businesses but lacked the staff and budget for a dedicated outbound sales team. Manual outreach was sporadic and hard to track.",
     solution:
-      "Bateen AI Caller ran targeted campaigns to local business contacts, presenting catering packages via natural AI voice conversations. Interested leads were automatically flagged for callback, and the café saw a measurable increase in catering enquiries without hiring additional staff.",
+      "AI Tele Caller ran targeted campaigns to local business contacts, presenting catering packages via natural AI voice conversations. Interested leads were automatically flagged for callback, and the café saw a measurable increase in catering enquiries without hiring additional staff.",
   },
 ];
 
