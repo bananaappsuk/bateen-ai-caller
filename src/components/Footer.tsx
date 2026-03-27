@@ -14,7 +14,7 @@ const Footer = () => {
               <span className="font-display text-sm font-bold text-gradient">AI Tele Caller</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              AI-powered outbound calling platform that automates your phone outreach at scale.
+              AI Tele Caller — AI-powered outbound calling platform that automates your phone outreach at scale.
             </p>
           </div>
 
