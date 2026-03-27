@@ -118,7 +118,7 @@ const faqs = [
       },
       {
         q: "How is this different from autodialers?",
-        a: "Autodialers just connect calls. Bateen AI Caller has full conversations, answers questions, handles objections, and qualifies leads automatically.",
+        a: "Autodialers just connect calls. AI Tele Caller has full conversations, answers questions, handles objections, and qualifies leads automatically.",
       },
     ],
   },
