@@ -16,7 +16,7 @@ const caseStudies = [
     problem:
       "As a leading immigration law firm, Farani Taylor needed to follow up with a large pipeline of prospective clients efficiently. Manual calling was slow, expensive, and couldn't scale to meet demand during peak enquiry periods.",
     solution:
-      "Bateen AI Caller launched targeted outbound campaigns to their enquiry lists, automatically qualifying leads based on case type and urgency. Real-time transcripts and lead classification allowed the intake team to prioritise high-value consultations instantly.",
+      "AI Tele Caller launched targeted outbound campaigns to their enquiry lists, automatically qualifying leads based on case type and urgency. Real-time transcripts and lead classification allowed the intake team to prioritise high-value consultations instantly.",
   },
   {
     client: "Wingrove Cafe",
