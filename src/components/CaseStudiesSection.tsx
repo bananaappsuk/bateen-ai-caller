@@ -8,7 +8,7 @@ const caseStudies = [
     problem:
       "IT Talent Hub struggled with reaching a high volume of potential candidates and clients through manual outbound calling. Their recruitment consultants spent hours dialling prospects with low connection rates, resulting in wasted time and inconsistent lead qualification.",
     solution:
-      "Bateen AI Caller automated their outbound campaigns, enabling hundreds of simultaneous calls to candidate and client lists. The AI voice agent qualified leads in real time, classified responses, and delivered call transcripts — freeing consultants to focus on closing placements.",
+      "AI Tele Caller automated their outbound campaigns, enabling hundreds of simultaneous calls to candidate and client lists. The AI voice agent qualified leads in real time, classified responses, and delivered call transcripts — freeing consultants to focus on closing placements.",
   },
   {
     client: "Farani Taylor",
