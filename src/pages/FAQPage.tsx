@@ -13,8 +13,8 @@ const faqs = [
     category: "Product",
     questions: [
       {
-        q: "What is Bateen AI Caller?",
-        a: "Bateen AI Caller is AI phone calling software that makes outbound calls, sounds completely human, qualifies leads automatically, and syncs everything to your CRM. It works 24/7 without breaks.",
+        q: "What is AI Tele Caller?",
+        a: "AI Tele Caller is AI phone calling software that makes outbound calls, sounds completely human, qualifies leads automatically, and syncs everything to your CRM. It works 24/7 without breaks.",
       },
       {
         q: "How natural does it sound?",
@@ -118,7 +118,7 @@ const faqs = [
       },
       {
         q: "How is this different from autodialers?",
-        a: "Autodialers just connect calls. Bateen AI Caller has full conversations, answers questions, handles objections, and qualifies leads automatically.",
+        a: "Autodialers just connect calls. AI Tele Caller has full conversations, answers questions, handles objections, and qualifies leads automatically.",
       },
     ],
   },
@@ -139,7 +139,7 @@ const FAQPage = () => {
               <span className="text-gradient">Frequently Asked Questions</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Everything you need to know about Bateen AI Caller.
+              Everything you need to know about AI Tele Caller.
             </p>
           </motion.div>
 

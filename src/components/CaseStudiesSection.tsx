@@ -8,7 +8,7 @@ const caseStudies = [
     problem:
       "IT Talent Hub struggled with reaching a high volume of potential candidates and clients through manual outbound calling. Their recruitment consultants spent hours dialling prospects with low connection rates, resulting in wasted time and inconsistent lead qualification.",
     solution:
-      "Bateen AI Caller automated their outbound campaigns, enabling hundreds of simultaneous calls to candidate and client lists. The AI voice agent qualified leads in real time, classified responses, and delivered call transcripts — freeing consultants to focus on closing placements.",
+      "AI Tele Caller automated their outbound campaigns, enabling hundreds of simultaneous calls to candidate and client lists. The AI voice agent qualified leads in real time, classified responses, and delivered call transcripts — freeing consultants to focus on closing placements.",
   },
   {
     client: "Farani Taylor",
@@ -16,7 +16,7 @@ const caseStudies = [
     problem:
       "As a leading immigration law firm, Farani Taylor needed to follow up with a large pipeline of prospective clients efficiently. Manual calling was slow, expensive, and couldn't scale to meet demand during peak enquiry periods.",
     solution:
-      "Bateen AI Caller launched targeted outbound campaigns to their enquiry lists, automatically qualifying leads based on case type and urgency. Real-time transcripts and lead classification allowed the intake team to prioritise high-value consultations instantly.",
+      "AI Tele Caller launched targeted outbound campaigns to their enquiry lists, automatically qualifying leads based on case type and urgency. Real-time transcripts and lead classification allowed the intake team to prioritise high-value consultations instantly.",
   },
   {
     client: "Wingrove Cafe",
@@ -24,7 +24,7 @@ const caseStudies = [
     problem:
       "Wingrove Cafe wanted to promote new catering services and event bookings to local businesses but lacked the staff and budget for a dedicated outbound sales team. Manual outreach was sporadic and hard to track.",
     solution:
-      "Bateen AI Caller ran targeted campaigns to local business contacts, presenting catering packages via natural AI voice conversations. Interested leads were automatically flagged for callback, and the café saw a measurable increase in catering enquiries without hiring additional staff.",
+      "AI Tele Caller ran targeted campaigns to local business contacts, presenting catering packages via natural AI voice conversations. Interested leads were automatically flagged for callback, and the café saw a measurable increase in catering enquiries without hiring additional staff.",
   },
 ];
 
@@ -43,7 +43,7 @@ const CaseStudiesSection = () => {
             <span className="text-gradient">Case Studies</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            See how businesses are transforming their outreach with Bateen AI Caller
+            See how businesses are transforming their outreach with AI Tele Caller
           </p>
         </motion.div>
 

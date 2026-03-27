@@ -34,7 +34,7 @@ const AboutSection = () => {
             <span className="text-gradient">About Us</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-3xl mx-auto leading-relaxed">
-            Bateen.ai helps companies move from AI consumers to AI builders. Through hands-on,
+            AI Tele Caller helps companies move from AI consumers to AI builders. Through hands-on,
             execution-focused workshops, we enable teams to apply AI directly to their daily
             workflows, automate smarter, and create measurable business impact.
           </p>

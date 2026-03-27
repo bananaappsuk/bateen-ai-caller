@@ -207,7 +207,7 @@ const PricingSection = () => {
                 <tr className="border-b border-border/50">
                   <th className="text-left p-4 text-muted-foreground font-medium">Item</th>
                   <th className="text-center p-4 text-muted-foreground font-medium">Human Rep</th>
-                  <th className="text-center p-4 text-muted-foreground font-medium">Bateen AI</th>
+                  <th className="text-center p-4 text-muted-foreground font-medium">AI Tele Caller</th>
                 </tr>
               </thead>
               <tbody>

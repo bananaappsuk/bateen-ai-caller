@@ -19,7 +19,7 @@ const CTASection = () => {
               Ready to Automate Your Outreach?
             </h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-              Schedule a personalised demo and see how Bateen AI Caller can transform
+              Schedule a personalised demo and see how AI Tele Caller can transform
               your lead generation process.
             </p>
             <a

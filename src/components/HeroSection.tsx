@@ -38,7 +38,7 @@ const HeroSection = () => {
           </h1>
 
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-primary-foreground mb-10 font-body leading-relaxed">
-            Bateen AI Caller makes hundreds of simultaneous outbound calls with natural-sounding
+            AI Tele Caller makes hundreds of simultaneous outbound calls with natural-sounding
             AI voice agents. Qualify leads, book meetings, and scale your outreach automatically.
           </p>
 
