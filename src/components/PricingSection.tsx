@@ -116,7 +116,7 @@ const PricingSection = () => {
           </div>
 
           <a
-            href="https://meetings-eu1.hubspot.com/admin-bateen"
+            href="https://www.nextgentechs.io"
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full text-center bg-gradient-cta text-primary-foreground py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity"
