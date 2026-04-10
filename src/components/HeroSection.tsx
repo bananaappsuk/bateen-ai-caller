@@ -44,7 +44,7 @@ const HeroSection = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <a
-              href="https://meetings-eu1.hubspot.com/admin-bateen"
+              href="https://www.nextgentechs.io"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-gradient-cta text-primary-foreground px-8 py-3.5 rounded-lg text-lg font-bold shadow-glow-lg hover:opacity-90 transition-all"

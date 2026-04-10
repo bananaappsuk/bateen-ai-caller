@@ -76,17 +76,17 @@ const ContactPage = () => {
                 {/* Company Section */}
                 <div>
                   <h3 className="text-lg font-display font-bold text-foreground mb-3">Company</h3>
-                  <p className="text-foreground font-medium">BATEEN AI LTD</p>
+                  <p className="text-foreground font-medium">NextGen Techs</p>
                   <p className="text-muted-foreground">20 Wenlock Road</p>
                   <p className="text-muted-foreground">London N1 7GU</p>
                   <p className="text-muted-foreground mb-3">United Kingdom</p>
                   <div className="flex items-center gap-3 mb-2">
                     <Mail className="w-4 h-4 text-primary shrink-0" />
-                    <a href="mailto:admin@bateen.ai" className="text-foreground font-medium hover:text-primary transition-colors">admin@bateen.ai</a>
+                    <a href="mailto:sriram@nextgentechs.io" className="text-foreground font-medium hover:text-primary transition-colors">sriram@nextgentechs.io</a>
                   </div>
                   <div className="flex items-center gap-3">
                     <Globe className="w-4 h-4 text-primary shrink-0" />
-                    <a href="https://www.bateen.ai" target="_blank" rel="noopener noreferrer" className="text-foreground font-medium hover:text-primary transition-colors">www.bateen.ai</a>
+                    <a href="https://www.nextgentechs.io" target="_blank" rel="noopener noreferrer" className="text-foreground font-medium hover:text-primary transition-colors">www.nextgentechs.io</a>
                   </div>
                 </div>
 
@@ -99,8 +99,8 @@ const ContactPage = () => {
                         <Mail className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-foreground font-medium">Sriram Angajala – CEO</p>
-                        <a href="mailto:sriram@bateen.ai" className="text-muted-foreground hover:text-primary transition-colors">sriram@bateen.ai</a>
+                        <p className="text-foreground font-medium">Sriram Angajala – Director</p>
+                        <a href="mailto:sriram@nextgentechs.io" className="text-muted-foreground hover:text-primary transition-colors">sriram@nextgentechs.io</a>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">

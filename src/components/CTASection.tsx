@@ -23,7 +23,7 @@ const CTASection = () => {
               your lead generation process.
             </p>
             <a
-              href="https://meetings-eu1.hubspot.com/admin-bateen"
+              href="https://www.nextgentechs.io"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-gradient-cta text-primary-foreground px-10 py-4 rounded-xl font-bold text-lg shadow-glow hover:opacity-90 transition-all"
@@ -31,7 +31,7 @@ const CTASection = () => {
               Book a Demo
             </a>
             <p className="text-sm text-muted-foreground mt-4">
-              Or email us at admin@bateen.ai
+              Or email us at sriram@nextgentechs.io
             </p>
           </div>
         </motion.div>
