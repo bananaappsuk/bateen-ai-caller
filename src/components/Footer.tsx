@@ -16,6 +16,7 @@ const Footer = () => {
             <p className="text-sm text-muted-foreground leading-relaxed">
               AI Tele Caller — AI-powered outbound calling platform that automates your phone outreach at scale.
             </p>
+            <p className="text-xs text-muted-foreground mt-3">Powered by <a href="https://www.nextgentechs.io" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">NextGen Techs</a></p>
           </div>
 
           {/* Quick Links */}
@@ -33,14 +34,14 @@ const Footer = () => {
           <div>
             <h4 className="font-display text-sm font-bold text-foreground mb-4">Company</h4>
             <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-              <p className="text-foreground font-medium">BATEEN AI LTD</p>
+              <p className="text-foreground font-medium">NextGen Techs</p>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5 text-secondary flex-shrink-0" />
                 <p>20 Wenlock Road, London, England, N1 7GU</p>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-secondary flex-shrink-0" />
-                <a href="mailto:admin@bateen.ai" className="hover:text-foreground transition-colors">admin@bateen.ai</a>
+                <a href="mailto:sriram@nextgentechs.io" className="hover:text-foreground transition-colors">sriram@nextgentechs.io</a>
               </div>
             </div>
           </div>
@@ -53,12 +54,12 @@ const Footer = () => {
                 <User className="w-4 h-4 mt-0.5 text-secondary flex-shrink-0" />
                 <div>
                   <p className="text-foreground font-medium">Sriram Angajala</p>
-                  <p>CEO</p>
+                  <p>Director</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-secondary flex-shrink-0" />
-                <a href="mailto:Sriram@bateen.ai" className="hover:text-foreground transition-colors">Sriram@bateen.ai</a>
+                <a href="mailto:sriram@nextgentechs.io" className="hover:text-foreground transition-colors">sriram@nextgentechs.io</a>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-secondary flex-shrink-0" />
@@ -70,7 +71,7 @@ const Footer = () => {
 
         <div className="border-t border-border/50 pt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            © 2026 BATEEN AI LTD — All rights reserved.
+            © 2026 NextGen Techs — All rights reserved.
           </p>
         </div>
       </div>
