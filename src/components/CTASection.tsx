@@ -23,7 +23,7 @@ const CTASection = () => {
               your lead generation process.
             </p>
             <a
-              href="https://www.nextgentechs.io"
+              href="https://calendly.com/sriram-nextgentechs/ai-advisor"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-gradient-cta text-primary-foreground px-10 py-4 rounded-xl font-bold text-lg shadow-glow hover:opacity-90 transition-all"
