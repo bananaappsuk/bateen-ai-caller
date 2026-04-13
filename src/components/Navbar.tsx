@@ -48,6 +48,14 @@ const Navbar = () => {
               </a>
             )
           )}
+          <a
+            href="https://vocalmax.io/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Sign In
+          </a>
           <Link
             to="/contact"
             className="bg-gradient-cta text-primary-foreground px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
@@ -88,6 +96,15 @@ const Navbar = () => {
               </a>
             )
           )}
+          <a
+            href="https://vocalmax.io/"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className="block py-3 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Sign In
+          </a>
           <Link
             to="/contact"
             onClick={() => setOpen(false)}

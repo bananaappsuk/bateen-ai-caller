@@ -44,7 +44,7 @@ const HeroSection = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <a
-              href="https://www.nextgentechs.io"
+              href="https://calendly.com/sriram-nextgentechs/ai-advisor"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-gradient-cta text-primary-foreground px-8 py-3.5 rounded-lg text-lg font-bold shadow-glow-lg hover:opacity-90 transition-all"
