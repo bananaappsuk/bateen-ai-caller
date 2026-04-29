@@ -23,7 +23,7 @@ const CTASection = () => {
               your lead generation process.
             </p>
             <a
-              href="https://calendar.app.google/fSeemahWL8u3ALBDA"
+              href="https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0qcRUglD8qicU4kzrD-rFtlyP94h0JaZnv_-41rtPM-BkStaGx-mBvWG0nOP8EzQzaaMgYk8Qm"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-gradient-cta text-primary-foreground px-10 py-4 rounded-xl font-bold text-lg shadow-glow hover:opacity-90 transition-all"
