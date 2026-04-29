@@ -44,7 +44,7 @@ const HeroSection = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <a
-              href="https://calendar.app.google/fSeemahWL8u3ALBDA"
+              href="https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0qcRUglD8qicU4kzrD-rFtlyP94h0JaZnv_-41rtPM-BkStaGx-mBvWG0nOP8EzQzaaMgYk8Qm"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-gradient-cta text-primary-foreground px-8 py-3.5 rounded-lg text-lg font-bold shadow-glow-lg hover:opacity-90 transition-all"
