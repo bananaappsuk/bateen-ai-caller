@@ -116,7 +116,7 @@ const PricingSection = () => {
           </div>
 
           <a
-            href="https://calendly.com/sriram-nextgentechs/ai-advisor"
+            href="https://calendar.app.google/fSeemahWL8u3ALBDA"
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full text-center bg-gradient-cta text-primary-foreground py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity"
