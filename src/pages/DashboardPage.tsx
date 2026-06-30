@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { getDevUser, canAccessRoute } from "@/lib/devAuth";
 import {
   LayoutDashboard,
   Bot,
@@ -93,6 +94,16 @@ const callVolumeData = [
 
 const DashboardPage = () => {
   const [timeRange, setTimeRange] = useState("7d");
+  const navigate = useNavigate();
+  const user = getDevUser();
+
+  useEffect(() => {
+    if (!user) navigate("/login", { replace: true });
+  }, [user, navigate]);
+
+  if (!user) return null;
+
+  const visibleNav = navItems.filter((item) => canAccessRoute(user, item.href));
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
