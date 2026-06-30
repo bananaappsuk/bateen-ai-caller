@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import logo from "@/assets/bateen-logo.png";
+import logo from "@/assets/ai-tele-caller-logo.png";
 import ContactDialog from "@/components/ContactDialog";
 
 const navLinks = [

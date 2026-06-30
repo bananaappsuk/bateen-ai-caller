@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import logo from "@/assets/bateen-logo.png";
+import logo from "@/assets/ai-tele-caller-logo.png";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");

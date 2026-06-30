@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Mail, ShieldCheck } from "lucide-react";
-import logo from "@/assets/bateen-logo.png";
+import logo from "@/assets/ai-tele-caller-logo.png";
 
 const demoUrl =
   "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0qcRUglD8qicU4kzrD-rFtlyP94h0JaZnv_-41rtPM-BkStaGx-mBvWG0nOP8EzQzaaMgYk8Qm";
