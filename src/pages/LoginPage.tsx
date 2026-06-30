@@ -44,11 +44,22 @@ const LoginPage = () => {
             required
             className="h-12 w-full rounded-xl border-slate-200 px-4 text-base focus-visible:ring-[#00D4FF]"
           />
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="h-12 w-full rounded-xl border-slate-200 px-4 text-base focus-visible:ring-[#00D4FF]"
+          />
+          {error && (
+            <p className="text-sm text-red-500 text-center">{error}</p>
+          )}
           <Button
             type="submit"
             className="h-12 w-full rounded-xl font-semibold text-white bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] hover:opacity-90 transition-opacity"
           >
-            Send code
+            Sign in
           </Button>
         </form>
 
