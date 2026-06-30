@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Check, Sparkles, ArrowRight, Calendar } from "lucide-react";
 
@@ -15,7 +16,7 @@ const plans = [
     cta: "Start with Lite",
     popular: false,
     trial: false,
-    href: "https://vocalmax.io/",
+    href: "/signup",
   },
   {
     name: "Starter",
@@ -29,7 +30,7 @@ const plans = [
     cta: "Start 7-day free trial",
     popular: false,
     trial: true,
-    href: "https://vocalmax.io/",
+    href: "/signup",
   },
   {
     name: "Growth",
@@ -43,7 +44,7 @@ const plans = [
     cta: "Start 7-day free trial",
     popular: true,
     trial: true,
-    href: "https://vocalmax.io/",
+    href: "/signup",
   },
   {
     name: "Scale",
@@ -57,7 +58,7 @@ const plans = [
     cta: "Start 7-day free trial",
     popular: false,
     trial: true,
-    href: "https://vocalmax.io/",
+    href: "/signup",
   },
 ];
 
@@ -190,17 +191,15 @@ const PricingSection = () => {
                 </div>
               </div>
 
-              <a
-                href={plan.href}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to={plan.href}
                 className={`w-full text-center ${
                   plan.popular ? "btn-primary" : "btn-secondary"
                 }`}
               >
                 {plan.cta}
                 {plan.trial && <Sparkles className="w-4 h-4" />}
-              </a>
+              </Link>
             </motion.div>
           ))}
         </div>
