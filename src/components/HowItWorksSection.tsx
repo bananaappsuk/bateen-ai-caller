@@ -49,6 +49,8 @@ const HowItWorksSection = () => {
           <div className="relative space-y-12 md:space-y-0">
             {steps.map((step, i) => {
               const isEven = i % 2 === 0;
+              const accent = isEven ? "#00D4FF" : "#FF6FD8";
+
               return (
                 <motion.div
                   key={i}
@@ -56,16 +58,12 @@ const HowItWorksSection = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-100px" }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="relative md:flex md:items-center md:min-h-[11rem]"
+                  className="md:grid md:grid-cols-[1fr_auto_1fr] md:gap-x-12 md:items-center md:min-h-[11rem]"
                 >
-                  {/* Left side card */}
-                  <div
-                    className={`md:w-[calc(50%-3rem)] ${
-                      isEven ? "block md:order-1" : "hidden md:block md:order-1"
-                    }`}
-                  >
-                    {isEven && (
-                      <div className="surface-card p-6 md:p-8 text-left md:text-right">
+                  {/* Left column card */}
+                  <div className="md:pr-0">
+                    {isEven ? (
+                      <div className="surface-card p-6 md:p-8 md:text-right">
                         <span className="text-xs font-bold text-brand-gradient uppercase tracking-[0.18em] block mb-3">
                           Step {step.number}
                         </span>
@@ -76,34 +74,22 @@ const HowItWorksSection = () => {
                           {step.desc}
                         </p>
                       </div>
+                    ) : (
+                      <div className="hidden md:block" />
                     )}
                   </div>
 
                   {/* Center icon badge */}
-                  <div className="hidden md:flex md:order-2 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-soft items-center justify-center z-10">
+                  <div className="hidden md:flex w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-soft items-center justify-center z-10 shrink-0 self-center">
                     <div className="w-11 h-11 rounded-xl bg-brand-gradient-soft flex items-center justify-center">
-                      <step.icon
-                        className="w-5 h-5"
-                        style={{ color: isEven ? "#00D4FF" : "#FF6FD8" }}
-                      />
+                      <step.icon className="w-5 h-5" style={{ color: accent }} />
                     </div>
                   </div>
 
-                  {/* Right side card */}
-                  <div
-                    className={`md:w-[calc(50%-3rem)] ${
-                      isEven ? "hidden md:block md:order-3" : "block md:order-3"
-                    }`}
-                  >
-                    {!isEven && (
+                  {/* Right column card */}
+                  <div className="md:pl-0">
+                    {!isEven ? (
                       <div className="surface-card p-6 md:p-8 text-left">
-                        {/* Mobile icon badge */}
-                        <div className="md:hidden w-12 h-12 rounded-xl bg-brand-gradient-soft flex items-center justify-center mb-4">
-                          <step.icon
-                            className="w-6 h-6"
-                            style={{ color: "#FF6FD8" }}
-                          />
-                        </div>
                         <span className="text-xs font-bold text-brand-gradient uppercase tracking-[0.18em] block mb-3">
                           Step {step.number}
                         </span>
@@ -114,16 +100,26 @@ const HowItWorksSection = () => {
                           {step.desc}
                         </p>
                       </div>
+                    ) : (
+                      <div className="hidden md:block" />
                     )}
                   </div>
 
-                  {/* Mobile icon badge for even steps (when card is on the left conceptually) */}
-                  {isEven && (
-                    <div className="md:hidden absolute left-0 top-0 w-12 h-12 rounded-xl bg-brand-gradient-soft flex items-center justify-center">
-                      <step.icon
-                        className="w-6 h-6"
-                        style={{ color: "#00D4FF" }}
-                      />
+                  {/* Mobile-only card and icon wrapper for non-even steps */}
+                  {!isEven && (
+                    <div className="md:hidden surface-card p-6 pl-16 relative">
+                      <div className="absolute left-4 top-4 w-10 h-10 rounded-xl bg-brand-gradient-soft flex items-center justify-center">
+                        <step.icon className="w-5 h-5" style={{ color: accent }} />
+                      </div>
+                      <span className="text-xs font-bold text-brand-gradient uppercase tracking-[0.18em] block mb-3">
+                        Step {step.number}
+                      </span>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">
+                        {step.title}
+                      </h3>
+                      <p className="text-slate-600 leading-relaxed">
+                        {step.desc}
+                      </p>
                     </div>
                   )}
                 </motion.div>
