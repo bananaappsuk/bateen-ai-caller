@@ -16,6 +16,17 @@ export default {
       fontFamily: {
         display: ["Orbitron", "sans-serif"],
         body: ["Inter", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+      },
+      backgroundImage: {
+        "brand-gradient": "linear-gradient(135deg, #00D4FF 0%, #FF6FD8 100%)",
+        "brand-gradient-soft":
+          "linear-gradient(135deg, rgba(0,212,255,0.10) 0%, rgba(255,111,216,0.10) 100%)",
+      },
+      boxShadow: {
+        soft: "0 4px 20px -2px rgba(30, 41, 59, 0.06), 0 2px 8px -2px rgba(30, 41, 59, 0.04)",
+        "soft-lg":
+          "0 20px 50px -10px rgba(30, 41, 59, 0.12), 0 8px 20px -8px rgba(30, 41, 59, 0.06)",
       },
       colors: {
         border: "hsl(var(--border))",
@@ -23,6 +34,10 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        brand: {
+          cyan: "#00D4FF",
+          pink: "#FF6FD8",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
