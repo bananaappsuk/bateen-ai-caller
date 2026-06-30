@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
@@ -95,13 +96,13 @@ const AIAgentsSection = () => {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="text-center mt-12"
         >
-          <a
-            href="https://vocalmax.io/"
+          <Link
+            to="/signup"
             className="btn-primary"
           >
             Start your free trial and meet them properly
             <ArrowRight className="w-4 h-4" />
-          </a>
+          </Link>
         </motion.div>
       </div>
     </section>
