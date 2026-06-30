@@ -15,6 +15,9 @@ import {
   Clock,
   Activity,
   ChevronDown,
+  PhoneCall,
+  ClipboardList,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Card,

@@ -69,6 +69,9 @@ const LoginPage = () => {
             Sign up
           </a>
         </p>
+        <p className="mt-4 text-center text-xs text-slate-400">
+          Admin: admin@aitelecaller.com · User: user@business.com
+        </p>
       </div>
     </div>
   );
