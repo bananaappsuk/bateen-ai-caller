@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { getDevUser, canAccessRoute } from "@/lib/devAuth";
 import {
   LayoutDashboard,
   Bot,
@@ -93,6 +94,16 @@ const callVolumeData = [
 
 const DashboardPage = () => {
   const [timeRange, setTimeRange] = useState("7d");
+  const navigate = useNavigate();
+  const user = getDevUser();
+
+  useEffect(() => {
+    if (!user) navigate("/login", { replace: true });
+  }, [user, navigate]);
+
+  if (!user) return null;
+
+  const visibleNav = navItems.filter((item) => canAccessRoute(user, item.href));
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
@@ -109,7 +120,7 @@ const DashboardPage = () => {
         {/* Nav */}
         <nav className="flex-1 px-4 py-6 overflow-y-auto">
           <ul className="space-y-1">
-            {navItems.map((item) => (
+            {visibleNav.map((item) => (
               <li key={item.label}>
                 <NavLink
                   to={item.href}
@@ -138,11 +149,11 @@ const DashboardPage = () => {
         <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer">
             <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#FF6FD8] flex items-center justify-center text-white text-sm font-semibold">
-              SA
+              {user.initials}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">Sriram Angajala</p>
-              <p className="text-xs text-slate-500 truncate">sriram@nextgentechs.io</p>
+              <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
+              <p className="text-xs text-slate-500 truncate">{user.email}</p>
             </div>
           </div>
         </div>
