@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Upload } from "lucide-react";
 
@@ -42,15 +43,13 @@ const LeadReactivationSection = () => {
           </div>
 
           <div className="mt-10">
-            <a
-              href="https://vocalmax.io/"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/signup"
               className="btn-primary"
             >
               <Upload className="w-5 h-5" />
               Upload your old leads — start free trial
-            </a>
+            </Link>
           </div>
         </motion.div>
       </div>
