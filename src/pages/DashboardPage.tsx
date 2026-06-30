@@ -15,6 +15,9 @@ import {
   Clock,
   Activity,
   ChevronDown,
+  PhoneCall,
+  ClipboardList,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Card,
@@ -280,6 +283,35 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* My Usage — user role only */}
+          {user.role === "user" && (
+            <div className="mt-8">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">My Usage</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { title: "AI Calls Made", icon: PhoneCall, color: "text-cyan-500", bg: "bg-cyan-50" },
+                  { title: "Orders/Feedback Logged", icon: ClipboardList, color: "text-purple-500", bg: "bg-purple-50" },
+                  { title: "Complaints Raised", icon: AlertTriangle, color: "text-pink-500", bg: "bg-pink-50" },
+                ].map((c) => (
+                  <Card key={c.title} className="bg-white rounded-xl border-slate-100 shadow-soft">
+                    <CardContent className="p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-slate-500 mb-1">{c.title}</p>
+                          <p className="text-2xl font-bold text-slate-900">0</p>
+                          <p className="text-xs text-slate-400 mt-1">No data yet</p>
+                        </div>
+                        <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", c.bg)}>
+                          <c.icon className={cn("h-5 w-5", c.color)} />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
