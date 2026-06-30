@@ -3,13 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/ai-tele-caller-logo.png";
+import { devSignIn } from "@/lib/devAuth";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    const user = devSignIn(email, password);
+    if (!user) {
+      setError("Invalid email or password.");
+      return;
+    }
     navigate("/dashboard");
   };
 
