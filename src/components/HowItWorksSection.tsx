@@ -28,6 +28,40 @@ const steps = [
   },
 ];
 
+const StepCard = ({
+  step,
+  align,
+  accent,
+}: {
+  step: (typeof steps)[0];
+  align: "left" | "right";
+  accent: string;
+}) => {
+  const Icon = step.icon;
+  return (
+    <div
+      className={`surface-card p-6 md:p-8 relative ${
+        align === "left" ? "md:text-right" : "md:text-left"
+      }`}
+    >
+      {/* Mobile icon badge */}
+      <div className="md:hidden absolute left-4 top-4 w-10 h-10 rounded-xl bg-brand-gradient-soft flex items-center justify-center">
+        <Icon className="w-5 h-5" style={{ color: accent }} />
+      </div>
+
+      <div className="pl-14 md:pl-0">
+        <span className="text-xs font-bold text-brand-gradient uppercase tracking-[0.18em] block mb-3">
+          Step {step.number}
+        </span>
+        <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-2">
+          {step.title}
+        </h3>
+        <p className="text-slate-600 leading-relaxed">{step.desc}</p>
+      </div>
+    </div>
+  );
+};
+
 const HowItWorksSection = () => {
   return (
     <section id="how-it-works" className="py-24 bg-white overflow-hidden">
@@ -50,6 +84,7 @@ const HowItWorksSection = () => {
             {steps.map((step, i) => {
               const isEven = i % 2 === 0;
               const accent = isEven ? "#00D4FF" : "#FF6FD8";
+              const Icon = step.icon;
 
               return (
                 <motion.div
@@ -60,20 +95,10 @@ const HowItWorksSection = () => {
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                   className="md:grid md:grid-cols-[1fr_auto_1fr] md:gap-x-12 md:items-center md:min-h-[11rem]"
                 >
-                  {/* Left column card */}
+                  {/* Left column */}
                   <div className="md:pr-0">
                     {isEven ? (
-                      <div className="surface-card p-6 md:p-8 md:text-right">
-                        <span className="text-xs font-bold text-brand-gradient uppercase tracking-[0.18em] block mb-3">
-                          Step {step.number}
-                        </span>
-                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-2">
-                          {step.title}
-                        </h3>
-                        <p className="text-slate-600 leading-relaxed">
-                          {step.desc}
-                        </p>
-                      </div>
+                      <StepCard step={step} align="left" accent={accent} />
                     ) : (
                       <div className="hidden md:block" />
                     )}
@@ -82,46 +107,18 @@ const HowItWorksSection = () => {
                   {/* Center icon badge */}
                   <div className="hidden md:flex w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-soft items-center justify-center z-10 shrink-0 self-center">
                     <div className="w-11 h-11 rounded-xl bg-brand-gradient-soft flex items-center justify-center">
-                      <step.icon className="w-5 h-5" style={{ color: accent }} />
+                      <Icon className="w-5 h-5" style={{ color: accent }} />
                     </div>
                   </div>
 
-                  {/* Right column card */}
+                  {/* Right column */}
                   <div className="md:pl-0">
                     {!isEven ? (
-                      <div className="surface-card p-6 md:p-8 text-left">
-                        <span className="text-xs font-bold text-brand-gradient uppercase tracking-[0.18em] block mb-3">
-                          Step {step.number}
-                        </span>
-                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-2">
-                          {step.title}
-                        </h3>
-                        <p className="text-slate-600 leading-relaxed">
-                          {step.desc}
-                        </p>
-                      </div>
+                      <StepCard step={step} align="right" accent={accent} />
                     ) : (
                       <div className="hidden md:block" />
                     )}
                   </div>
-
-                  {/* Mobile-only card and icon wrapper for non-even steps */}
-                  {!isEven && (
-                    <div className="md:hidden surface-card p-6 pl-16 relative">
-                      <div className="absolute left-4 top-4 w-10 h-10 rounded-xl bg-brand-gradient-soft flex items-center justify-center">
-                        <step.icon className="w-5 h-5" style={{ color: accent }} />
-                      </div>
-                      <span className="text-xs font-bold text-brand-gradient uppercase tracking-[0.18em] block mb-3">
-                        Step {step.number}
-                      </span>
-                      <h3 className="text-xl font-bold text-slate-900 mb-2">
-                        {step.title}
-                      </h3>
-                      <p className="text-slate-600 leading-relaxed">
-                        {step.desc}
-                      </p>
-                    </div>
-                  )}
                 </motion.div>
               );
             })}
