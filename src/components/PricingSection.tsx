@@ -1,238 +1,258 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Zap, Clock, PhoneOff } from "lucide-react";
+import { Check, Sparkles, ArrowRight, Calendar } from "lucide-react";
 
-const coreFeatures = [
-  "Unlimited call volume capacity",
-  "Natural-sounding AI voices",
-  "Call recordings + transcripts",
-  "Lead qualification & scoring",
-  "CRM integration (HubSpot, Salesforce, etc.)",
-  "Campaign management dashboard",
-  "Real-time call monitoring",
-  "Automatic retry logic",
-  "Multi-language support",
-  "No long-term contract",
+const plans = [
+  {
+    name: "Lite",
+    monthlyPrice: 29,
+    annualPrice: 24,
+    credits: 50,
+    agents: 1,
+    simultaneousCalls: 2,
+    leadsUpload: 50,
+    support: "Email support",
+    cta: "Start with Lite",
+    popular: false,
+    trial: false,
+    href: "https://vocalmax.io/",
+  },
+  {
+    name: "Starter",
+    monthlyPrice: 249,
+    annualPrice: 207,
+    credits: 700,
+    agents: 2,
+    simultaneousCalls: 5,
+    leadsUpload: 250,
+    support: "Ready-made agents + email support",
+    cta: "Start 7-day free trial",
+    popular: false,
+    trial: true,
+    href: "https://vocalmax.io/",
+  },
+  {
+    name: "Growth",
+    monthlyPrice: 699,
+    annualPrice: 583,
+    credits: 2250,
+    agents: 5,
+    simultaneousCalls: 10,
+    leadsUpload: 1000,
+    support: "Priority support",
+    cta: "Start 7-day free trial",
+    popular: true,
+    trial: true,
+    href: "https://vocalmax.io/",
+  },
+  {
+    name: "Scale",
+    monthlyPrice: 1999,
+    annualPrice: 1666,
+    credits: 7000,
+    agents: "Unlimited",
+    simultaneousCalls: 20,
+    leadsUpload: "Unlimited",
+    support: "White-label + priority support",
+    cta: "Start 7-day free trial",
+    popular: false,
+    trial: true,
+    href: "https://vocalmax.io/",
+  },
 ];
 
-const setupTiers = [
-  {
-    type: "Simple",
-    price: "£500",
-    details: "CSV upload, basic script, no CRM",
-  },
-  {
-    type: "Standard",
-    price: "£1,000",
-    details: "CRM integration, custom script, lead rules",
-  },
-  {
-    type: "Complex",
-    price: "£3,000",
-    details: "Multiple CRMs, advanced flows, voice cloning",
-  },
-];
-
-const costExamples = [
-  { scenario: "Voicemail", duration: "Up to 1 min", cost: "20p" },
-  { scenario: "Short conversation", duration: "2 mins", cost: "40p" },
-  { scenario: "Avg conversation", duration: "3 mins", cost: "60p" },
-  { scenario: "100 calls (3 min avg)", duration: "300 mins", cost: "£60" },
-  { scenario: "500 calls (3 min avg)", duration: "1,500 mins", cost: "£300" },
+const subtextBullets = [
+  "1 credit ≈ 1 min calling",
+  "top up at $0.28/credit",
+  "dedicated numbers $3/mo",
+  "pay annually get 2 months free",
 ];
 
 const PricingSection = () => {
+  const [annual, setAnnual] = useState(false);
+
   return (
-    <section id="pricing" className="py-24 relative">
-      <div className="absolute top-0 left-0 right-0 neon-line" />
+    <section id="pricing" className="py-24 bg-slate-50">
       <div className="container mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
-            <span className="text-gradient">Simple Pricing</span>
+        <div className="text-center max-w-2xl mx-auto mb-6">
+          <span className="section-label">Pricing</span>
+          <h2 className="section-heading mt-3">
+            Simple pricing.{" "}
+            <span className="text-brand-gradient">One credit ≈ one minute.</span>
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            No subscriptions. No commitments. Pay only for connected calls.
-          </p>
-        </motion.div>
+        </div>
 
-        {/* Main pricing card */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="max-w-lg mx-auto glass-card rounded-3xl p-10 shadow-glow-lg relative overflow-hidden mb-12"
-        >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-cta" />
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-12 text-sm text-slate-600">
+          {subtextBullets.map((bullet) => (
+            <span
+              key={bullet}
+              className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-soft"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-gradient" />
+              {bullet}
+            </span>
+          ))}
+        </div>
 
-          <div className="flex items-center gap-3 mb-6">
-            <Zap className="w-8 h-8 text-secondary" />
-            <span className="font-display text-lg font-bold text-foreground">Pay As You Use</span>
-          </div>
-
-          <div className="mb-4">
-            <span className="text-6xl font-display font-black text-gradient">20p</span>
-            <span className="text-muted-foreground text-lg ml-2">/minute</span>
-          </div>
-
-          <p className="text-sm text-muted-foreground mb-6">
-            Billed in whole minutes, connected calls only. Rounds up to the next full minute.
-          </p>
-
-          {/* Charged / Not Charged */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
-              <div className="flex items-center gap-2 mb-2">
-                <Check className="w-4 h-4 text-secondary" />
-                <span className="text-sm font-semibold text-foreground">Charged For</span>
-              </div>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• Person picks up and talks</li>
-                <li>• Call goes to voicemail</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
-              <div className="flex items-center gap-2 mb-2">
-                <PhoneOff className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-semibold text-foreground">Not Charged</span>
-              </div>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• No answer / busy signal</li>
-                <li>• Disconnected numbers</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10">
-            {coreFeatures.map((perk, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span className="text-sm text-muted-foreground">{perk}</span>
-              </div>
-            ))}
-          </div>
-
-          <a
-            href="https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0qcRUglD8qicU4kzrD-rFtlyP94h0JaZnv_-41rtPM-BkStaGx-mBvWG0nOP8EzQzaaMgYk8Qm"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block w-full text-center bg-gradient-cta text-primary-foreground py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity"
+        {/* Toggle */}
+        <div className="flex items-center justify-center gap-3 mb-14">
+          <span className={`text-sm font-medium ${!annual ? "text-slate-900" : "text-slate-500"}`}>
+            Monthly
+          </span>
+          <button
+            onClick={() => setAnnual(!annual)}
+            className="relative w-14 h-7 rounded-full bg-slate-200 transition-colors duration-200"
+            aria-label="Toggle annual billing"
+            style={{ backgroundColor: annual ? "#FF6FD8" : "#e2e8f0" }}
           >
-            Book a Demo
-          </a>
-        </motion.div>
+            <span
+              className="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-200"
+              style={{ transform: annual ? "translateX(28px)" : "translateX(0)" }}
+            />
+          </button>
+          <span className={`text-sm font-medium ${annual ? "text-slate-900" : "text-slate-500"}`}>
+            Annual
+          </span>
+          {annual && (
+            <span className="text-xs font-semibold text-brand-pink bg-white px-2 py-1 rounded-full border border-slate-100 shadow-soft">
+              Save 2 months
+            </span>
+          )}
+        </div>
 
-        {/* Typical Costs Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="max-w-3xl mx-auto mb-12"
-        >
-          <h3 className="font-display text-xl font-bold text-foreground text-center mb-6">
-            Typical Call Costs
-          </h3>
-          <div className="glass-card rounded-2xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left p-4 text-muted-foreground font-medium">Scenario</th>
-                  <th className="text-left p-4 text-muted-foreground font-medium">Duration</th>
-                  <th className="text-right p-4 text-muted-foreground font-medium">Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {costExamples.map((row, i) => (
-                  <tr key={i} className="border-b border-border/30 last:border-0">
-                    <td className="p-4 text-foreground">{row.scenario}</td>
-                    <td className="p-4 text-muted-foreground">{row.duration}</td>
-                    <td className="p-4 text-right font-semibold text-foreground">{row.cost}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
+        {/* Plans */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto mb-16">
+          {plans.map((plan, i) => (
+            <motion.div
+              key={plan.name}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              className={`relative flex flex-col p-7 rounded-2xl border transition-all duration-200 ${
+                plan.popular
+                  ? "bg-white border-brand-pink/30 shadow-soft-lg scale-[1.02]"
+                  : "bg-white border-slate-100 shadow-soft hover:shadow-soft-lg"
+              }`}
+            >
+              {plan.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-white px-3 py-1 rounded-full bg-brand-gradient shadow-soft">
+                    <Sparkles className="w-3 h-3" />
+                    MOST POPULAR
+                  </span>
+                </div>
+              )}
 
-        {/* Setup Tiers */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="max-w-4xl mx-auto"
-        >
-          <h3 className="font-display text-xl font-bold text-foreground text-center mb-6">
-            Integration Setup Payment
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {setupTiers.map((tier, i) => (
-              <div
-                key={i}
-                className="glass-card rounded-2xl p-6 text-center"
-              >
-                <h4 className="font-display text-base font-bold text-foreground mb-2">{tier.type}</h4>
-                <p className="text-2xl font-display font-black text-gradient mb-3">{tier.price}</p>
-                <p className="text-sm text-muted-foreground">{tier.details}</p>
+              <div className="mb-5">
+                <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
+                <div className="mt-2 flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-slate-900">
+                    ${annual ? plan.annualPrice : plan.monthlyPrice}
+                  </span>
+                  <span className="text-sm text-slate-500">/mo</span>
+                </div>
+                {annual && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Billed annually (${plan.annualPrice * 12}/year)
+                  </p>
+                )}
               </div>
-            ))}
-          </div>
-          <div className="text-center">
+
+              <div className="flex-1 space-y-3 mb-6">
+                <div className="flex items-start gap-2 text-sm text-slate-600">
+                  <Check className="w-4 h-4 text-brand-cyan flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-slate-900">{plan.credits}</strong> credits/month
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 text-sm text-slate-600">
+                  <Check className="w-4 h-4 text-brand-cyan flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-slate-900">{plan.agents}</strong> agent{plan.agents !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 text-sm text-slate-600">
+                  <Check className="w-4 h-4 text-brand-cyan flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-slate-900">{plan.simultaneousCalls}</strong> simultaneous calls
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 text-sm text-slate-600">
+                  <Check className="w-4 h-4 text-brand-cyan flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-slate-900">{plan.leadsUpload}</strong> leads/upload
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 text-sm text-slate-600">
+                  <Check className="w-4 h-4 text-brand-cyan flex-shrink-0 mt-0.5" />
+                  <span>{plan.support}</span>
+                </div>
+              </div>
+
+              <a
+                href={plan.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`w-full text-center ${
+                  plan.popular ? "btn-primary" : "btn-secondary"
+                }`}
+              >
+                {plan.cta}
+                {plan.trial && <Sparkles className="w-4 h-4" />}
+              </a>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Notes */}
+        <div className="max-w-3xl mx-auto text-center space-y-3 mb-16">
+          <p className="text-sm text-slate-500">
+            7-day free trial on Starter, Growth and Scale · Card required, no charge until day 8 · Cancel anytime.
+          </p>
+          <p className="text-sm text-slate-500">
+            Need other countries or higher volume?{" "}
             <a
-              href="https://buy.stripe.com/7sY8wP2Ao0gn4vC9X7a3u03"
+              href="https://www.nextgentechs.io/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block bg-gradient-cta text-primary-foreground px-8 py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity"
+              className="text-brand-cyan hover:text-brand-pink font-medium transition-colors"
             >
-              Subscribe & Pay
+              Contact us
             </a>
-          </div>
-        </motion.div>
+          </p>
+        </div>
 
-        {/* Cost Comparison */}
+        {/* Done For You */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="max-w-3xl mx-auto mt-12"
+          transition={{ duration: 0.5 }}
+          className="max-w-4xl mx-auto"
         >
-          <h3 className="font-display text-xl font-bold text-foreground text-center mb-6">
-            Cost Comparison <span className="text-muted-foreground font-normal text-base">— 500 calls/month (3 min avg)</span>
-          </h3>
-          <div className="glass-card rounded-2xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left p-4 text-muted-foreground font-medium">Item</th>
-                  <th className="text-center p-4 text-muted-foreground font-medium">Human Rep</th>
-                  <th className="text-center p-4 text-muted-foreground font-medium">AI Tele Caller</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-border/30">
-                  <td className="p-4 text-foreground">Monthly cost</td>
-                  <td className="p-4 text-center text-muted-foreground">£1,500–£2,000</td>
-                  <td className="p-4 text-center font-semibold text-secondary">£300</td>
-                </tr>
-                <tr className="border-b border-border/30">
-                  <td className="p-4 text-foreground">Benefits / overhead</td>
-                  <td className="p-4 text-center text-muted-foreground">£200–£300</td>
-                  <td className="p-4 text-center font-semibold text-secondary">£0</td>
-                </tr>
-                <tr className="border-b border-border/30">
-                  <td className="p-4 text-foreground">Training / management</td>
-                  <td className="p-4 text-center text-muted-foreground">£100–£200</td>
-                  <td className="p-4 text-center font-semibold text-secondary">£0</td>
-                </tr>
-                <tr>
-                  <td className="p-4 text-foreground font-semibold">Annual savings</td>
-                  <td className="p-4 text-center text-muted-foreground">—</td>
-                  <td className="p-4 text-center font-bold text-gradient">~£15,000+</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="surface-card-lg p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 text-sm font-semibold text-brand-pink mb-3">
+                <Calendar className="w-4 h-4" />
+                Done For You
+              </div>
+              <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">
+                We build, script, clean and run your first campaign with you.
+              </h3>
+              <p className="text-slate-600">
+                Our team will build your agent, write the script, clean your list and run your first campaign with you.
+              </p>
+            </div>
+            <a
+              href="https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0qcRUglD8qicU4kzrD-rFtlyP94h0JaZnv_-41rtPM-BkStaGx-mBvWG0nOP8EzQzaaMgYk8Qm"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary whitespace-nowrap"
+            >
+              Book a demo
+              <ArrowRight className="w-4 h-4" />
+            </a>
           </div>
         </motion.div>
       </div>
