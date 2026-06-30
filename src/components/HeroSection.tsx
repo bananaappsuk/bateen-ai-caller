@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Phone, Zap, BarChart3 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -118,14 +119,12 @@ const HeroSection = () => {
               <a href={DEMO_URL} target="_blank" rel="noopener noreferrer" className="btn-primary">
                 Get a live demo call
               </a>
-              <a
-                href="https://vocalmax.io/"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/signup"
                 className="btn-secondary"
               >
                 Start free trial
-              </a>
+              </Link>
             </div>
             <p className="text-sm text-slate-500 mb-12">
               Our AI rings you in seconds, no signup needed · 7-day free trial on paid plans, cancel anytime
