@@ -38,7 +38,7 @@ import {
   Tooltip,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/bateen-logo.png";
+import logo from "@/assets/ai-tele-caller-logo.png";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard", active: true },
