@@ -13,6 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   LayoutDashboard,
   Bot,
   PhoneOutgoing,
@@ -28,6 +35,7 @@ import {
   AlertTriangle,
   Trash2,
   ShieldOff,
+  Info,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -70,6 +78,40 @@ const DNC_KEY = "ai_dnc_list";
 
 type DncEntry = { number: string; addedAt: string };
 
+const CALLING_HOURS_KEY = "ai_calling_hours";
+const DEFAULT_TIMEZONE = "Europe/London";
+
+type DaySchedule = { enabled: boolean; start: string; end: string };
+
+const buildDefaultDaySchedule = (day: string): DaySchedule => ({
+  enabled: day !== "Saturday" && day !== "Sunday",
+  start: "09:00",
+  end: "18:00",
+});
+
+const defaultCallingHours: Record<string, DaySchedule> = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+].reduce((acc, day) => {
+  acc[day] = buildDefaultDaySchedule(day);
+  return acc;
+}, {} as Record<string, DaySchedule>);
+
+const timezones = [
+  { value: "Europe/London", label: "London (UK)" },
+  { value: "Europe/Paris", label: "Paris (France)" },
+  { value: "America/New_York", label: "New York (US)" },
+  { value: "America/Los_Angeles", label: "Los Angeles (US)" },
+  { value: "Asia/Dubai", label: "Dubai (UAE)" },
+  { value: "Asia/Singapore", label: "Singapore" },
+  { value: "Australia/Sydney", label: "Sydney (Australia)" },
+];
+
 const SettingsPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -92,6 +134,32 @@ const SettingsPage = () => {
   const [dncInput, setDncInput] = useState("");
   const [dncError, setDncError] = useState<string | null>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
+  const [callingHours, setCallingHours] = useState<Record<string, DaySchedule>>(() => {
+    try {
+      const raw = localStorage.getItem(CALLING_HOURS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object" && parsed.days) {
+          return { ...defaultCallingHours, ...parsed.days };
+        }
+      }
+    } catch {
+      /* noop */
+    }
+    return defaultCallingHours;
+  });
+  const [timezone, setTimezone] = useState(() => {
+    try {
+      const raw = localStorage.getItem(CALLING_HOURS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.timezone) return parsed.timezone;
+      }
+    } catch {
+      /* noop */
+    }
+    return DEFAULT_TIMEZONE;
+  });
 
   useEffect(() => {
     if (!user) {
@@ -124,8 +192,12 @@ const SettingsPage = () => {
     const q = searchParams.get("tab");
     const match = tabs.find((t) => t.toLowerCase() === (q ?? "").toLowerCase());
     if (match && match !== activeTab) setActiveTab(match);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  useEffect(() => {
+    localStorage.setItem(CALLING_HOURS_KEY, JSON.stringify({ timezone, days: callingHours }));
+  }, [timezone, callingHours]);
 
   const changeTab = (t: Tab) => {
     setActiveTab(t);
@@ -184,6 +256,31 @@ const SettingsPage = () => {
     toast({ title: "Number removed", description: `${num} removed from the DNC list.` });
   };
 
+  const updateDaySchedule = (day: string, patch: Partial<DaySchedule>) => {
+    setCallingHours((prev) => ({ ...prev, [day]: { ...prev[day], ...patch } }));
+  };
+
+  const copyMondayToWeekdays = () => {
+    const monday = callingHours["Monday"];
+    ["Tuesday", "Wednesday", "Thursday", "Friday"].forEach((day) =>
+      updateDaySchedule(day, { enabled: monday.enabled, start: monday.start, end: monday.end })
+    );
+    toast({ title: "Schedule copied", description: "Monday's hours applied to Tuesday–Friday." });
+  };
+
+  const copyMondayToAll = () => {
+    const monday = callingHours["Monday"];
+    ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].forEach((day) =>
+      updateDaySchedule(day, { enabled: monday.enabled, start: monday.start, end: monday.end })
+    );
+    toast({ title: "Schedule copied", description: "Monday's hours applied to all days." });
+  };
+
+  const handleSaveCallingHours = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem(CALLING_HOURS_KEY, JSON.stringify({ timezone, days: callingHours }));
+    toast({ title: "Calling hours saved", description: "Your schedule has been updated." });
+  };
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
@@ -545,6 +642,149 @@ const SettingsPage = () => {
                   </div>
                 </div>
               </form>
+            ) : activeTab === "Calling Hours" ? (
+              <div className="max-w-3xl space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Calling Hours</h2>
+                  <p className="text-sm text-slate-500 mt-1 max-w-xl">
+                    Restrict when your campaigns can dial. Calls outside these hours will be skipped automatically and resumed when the window opens.
+                  </p>
+                </div>
+
+                {/* Timezone + quick actions */}
+                <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="timezone" className="text-sm font-medium text-slate-900">
+                      Timezone
+                    </Label>
+                    <Select value={timezone} onValueChange={setTimezone}>
+                      <SelectTrigger id="timezone" className="w-full sm:w-72">
+                        <SelectValue placeholder="Select timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timezones.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500">
+                      All times below are interpreted in this timezone.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={copyMondayToWeekdays}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      Copy Monday → Tue–Fri
+                    </button>
+                    <button
+                      type="button"
+                      onClick={copyMondayToAll}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      Copy Monday → All days
+                    </button>
+                  </div>
+                </div>
+
+                {/* Weekly schedule */}
+                <form onSubmit={handleSaveCallingHours} className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm space-y-6">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-semibold text-slate-900">Weekly Schedule</h3>
+                    <p className="text-sm text-slate-500">Set the hours when your campaigns can place calls.</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => {
+                      const schedule = callingHours[day];
+                      return (
+                        <div
+                          key={day}
+                          className={cn(
+                            "flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 py-4 border-b border-slate-100 last:border-0",
+                            !schedule.enabled && "bg-slate-50/50 rounded-xl -mx-3 px-3"
+                          )}
+                        >
+                          <div className="flex-1 min-w-[100px]">
+                            <span
+                              className={cn(
+                                "text-sm font-semibold",
+                                schedule.enabled ? "text-slate-900" : "text-slate-400"
+                              )}
+                            >
+                              {day}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-4 flex-wrap">
+                            <Switch
+                              id={`${day}-enabled`}
+                              checked={schedule.enabled}
+                              onCheckedChange={(checked) =>
+                                updateDaySchedule(day, { enabled: checked })
+                              }
+                              className="data-[state=checked]:bg-cyan-500"
+                            />
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id={`${day}-start`}
+                                type="time"
+                                value={schedule.start}
+                                onChange={(e) =>
+                                  updateDaySchedule(day, { start: e.target.value })
+                                }
+                                disabled={!schedule.enabled}
+                                className="w-28 h-10"
+                              />
+                              <span className="text-sm text-slate-400">→</span>
+                              <Input
+                                id={`${day}-end`}
+                                type="time"
+                                value={schedule.end}
+                                onChange={(e) =>
+                                  updateDaySchedule(day, { end: e.target.value })
+                                }
+                                disabled={!schedule.enabled}
+                                className="w-28 h-10"
+                              />
+                            </div>
+                            <div className="w-16 text-right">
+                              {!schedule.enabled && (
+                                <span className="text-xs font-medium text-slate-400">No calls</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
+                    >
+                      Save Calling Hours
+                    </button>
+                  </div>
+                </form>
+
+                {/* Help card */}
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 flex items-start gap-3">
+                  <Info className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">How this works</p>
+                    <p className="text-sm text-amber-700 mt-0.5">
+                      Campaigns stay running outside these hours — they just pause dialling. As soon as the window opens, calls resume automatically. No credits are used while paused.
+                    </p>
+                  </div>
+                </div>
+              </div>
             ) : activeTab === "DNC List" ? (
               <div className="max-w-3xl space-y-6">
                 <div className="flex items-start justify-between gap-4">
