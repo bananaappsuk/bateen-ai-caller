@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
 import DashboardPage from "./pages/DashboardPage.tsx";
 import AIAgentsPage from "./pages/AIAgentsPage.tsx";
+import CreateAgentPage from "./pages/CreateAgentPage.tsx";
 import CampaignsPage from "./pages/CampaignsPage.tsx";
 import LeadsPage from "./pages/LeadsPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
@@ -34,7 +35,9 @@ const App = () => (
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/ai-agents" element={<AIAgentsPage />} />
+          <Route path="/ai-agents/create" element={<CreateAgentPage />} />
           <Route path="/dashboard/agents" element={<AIAgentsPage />} />
+          <Route path="/dashboard/agents/create" element={<CreateAgentPage />} />
           <Route path="/campaigns" element={<CampaignsPage />} />
           <Route path="/dashboard/campaigns" element={<CampaignsPage />} />
           <Route path="/leads" element={<LeadsPage />} />
