@@ -114,6 +114,7 @@ const onboardingSteps = [
     description: "Pick a voice and write your call script.",
     button: "Create agent",
     active: true,
+    route: "/dashboard/agents",
   },
   {
     title: "Attach a phone number",
@@ -295,6 +296,7 @@ const DashboardPage = () => {
                     </div>
                     <button
                       disabled={!step.active}
+                      onClick={() => step.route && navigate(step.route)}
                       className={cn(
                         "shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                         step.active
