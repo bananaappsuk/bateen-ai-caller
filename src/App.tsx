@@ -36,6 +36,8 @@ const App = () => (
           <Route path="/dashboard/campaigns" element={<CampaignsPage />} />
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/dashboard/leads" element={<LeadsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/dashboard/settings" element={<SettingsPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
