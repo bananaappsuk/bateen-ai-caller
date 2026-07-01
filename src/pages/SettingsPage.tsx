@@ -26,7 +26,19 @@ import {
   CreditCard,
   Settings,
   AlertTriangle,
+  Trash2,
+  ShieldOff,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
 import { toast } from "@/hooks/use-toast";
