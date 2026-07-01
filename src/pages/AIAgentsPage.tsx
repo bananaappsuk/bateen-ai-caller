@@ -180,21 +180,6 @@ const AIAgentsPage = () => {
     setLinkOpen(false);
   };
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!createForm.internalName.trim() || !createForm.prompt.trim()) return;
-    setAgents((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        kind: "created",
-        ...createForm,
-        internalName: createForm.internalName.trim(),
-        prompt: createForm.prompt.trim(),
-      },
-    ]);
-    setCreateOpen(false);
-  };
 
   const handleDelete = (id: string) => {
     if (confirm("Delete this agent?")) {
