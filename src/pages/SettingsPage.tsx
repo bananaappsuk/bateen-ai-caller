@@ -42,6 +42,7 @@ import {
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
 import { toast } from "@/hooks/use-toast";
+import { IntegrationCard, integrations } from "@/components/IntegrationCard";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
@@ -664,6 +665,20 @@ const SettingsPage = () => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+              </div>
+            ) : activeTab === "Integrations" ? (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Integrations</h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Connect your favourite tools to automate follow-ups and scheduling.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {integrations.map((integration) => (
+                    <IntegrationCard key={integration.id} integration={integration} />
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="py-16 text-center">
