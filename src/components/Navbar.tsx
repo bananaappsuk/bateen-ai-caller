@@ -21,7 +21,7 @@ const Navbar = () => {
       initial={{ y: -80 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6 }}
-      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b border-border/50 bg-background/70"
+      className="sticky top-0 w-full z-50 bg-white border-b border-border/50"
     >
       <div className="container mx-auto flex items-center justify-between py-3 px-4">
         <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center">
