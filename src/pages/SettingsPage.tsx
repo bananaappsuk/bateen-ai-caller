@@ -65,6 +65,9 @@ type Tab = (typeof tabs)[number];
 
 const PROFILE_KEY = "ai_account_profile";
 const NOTIFICATIONS_KEY = "ai_notifications_settings";
+const DNC_KEY = "ai_dnc_list";
+
+type DncEntry = { number: string; addedAt: string };
 
 const SettingsPage = () => {
   const navigate = useNavigate();
