@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
   DropdownMenu,
