@@ -374,6 +374,123 @@ const SettingsPage = () => {
                   </button>
                 </div>
               </div>
+            ) : activeTab === "Notifications" ? (
+              <form onSubmit={handleSaveNotifications} className="max-w-3xl space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Choose how and when you want to be alerted.
+                  </p>
+                </div>
+
+                {/* Maintenance Banner */}
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">Under Maintenance</p>
+                    <p className="text-sm text-amber-700 mt-0.5">
+                      We're currently investigating an issue with email notifications. This feature will be available again shortly.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Email Alerts Card */}
+                <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm space-y-6">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">Email Alerts</h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Receive alerts when leads turn hot or warm.
+                    </p>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Label htmlFor="enableEmail" className="text-sm font-medium text-slate-900">
+                        Enable Email Notifications
+                      </Label>
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        Receive alerts when leads turn hot or warm.
+                      </p>
+                    </div>
+                    <Switch
+                      id="enableEmail"
+                      checked={notifications.enableEmail}
+                      onCheckedChange={(checked) =>
+                        setNotifications((prev) => ({ ...prev, enableEmail: checked }))
+                      }
+                      className="data-[state=checked]:bg-cyan-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientEmail" className="text-sm font-medium text-slate-900">
+                      Recipient Email
+                    </Label>
+                    <Input
+                      id="recipientEmail"
+                      type="email"
+                      value={notifications.email}
+                      onChange={(e) =>
+                        setNotifications((prev) => ({ ...prev, email: e.target.value }))
+                      }
+                      placeholder="you@company.com"
+                      disabled={!notifications.enableEmail}
+                      className={!notifications.enableEmail ? "bg-slate-50 text-slate-500" : ""}
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <p className="text-sm font-semibold text-slate-900">Triggers</p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <Label htmlFor="interestedLead" className="text-sm font-medium text-slate-900">
+                          Interested Lead Detected
+                        </Label>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          Notify when a lead is marked as interested.
+                        </p>
+                      </div>
+                      <Switch
+                        id="interestedLead"
+                        checked={notifications.interestedLead}
+                        onCheckedChange={(checked) =>
+                          setNotifications((prev) => ({ ...prev, interestedLead: checked }))
+                        }
+                        disabled={!notifications.enableEmail}
+                        className="data-[state=checked]:bg-cyan-500"
+                      />
+                    </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <Label htmlFor="callbackRequested" className="text-sm font-medium text-slate-900">
+                          Callback Requested
+                        </Label>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          Notify when a prospect asks for a callback.
+                        </p>
+                      </div>
+                      <Switch
+                        id="callbackRequested"
+                        checked={notifications.callbackRequested}
+                        onCheckedChange={(checked) =>
+                          setNotifications((prev) => ({ ...prev, callbackRequested: checked }))
+                        }
+                        disabled={!notifications.enableEmail}
+                        className="data-[state=checked]:bg-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
+                    >
+                      Save Settings
+                    </button>
+                  </div>
+                </div>
+              </form>
             ) : (
               <div className="py-16 text-center">
                 <h2 className="text-lg font-semibold text-slate-900">{activeTab}</h2>
