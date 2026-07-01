@@ -114,6 +114,7 @@ const onboardingSteps = [
     description: "Pick a voice and write your call script.",
     button: "Create agent",
     active: true,
+    route: "/dashboard/agents",
   },
   {
     title: "Attach a phone number",
