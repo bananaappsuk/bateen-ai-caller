@@ -20,6 +20,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   LayoutDashboard,
@@ -38,6 +48,13 @@ import {
   ChevronsUpDown,
   CreditCard,
   Settings,
+  Link2,
+  PhoneOff,
+  PhoneForwarded,
+  CalendarCheck,
+  Voicemail,
+  Gauge,
+  Waves,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -54,9 +71,19 @@ const navItems = [
 
 interface Agent {
   id: string;
+  kind: "linked" | "created";
   internalName: string;
-  agentId: string;
-  phoneNumber: string;
+  agentId?: string;
+  phoneNumber?: string;
+  preset?: string;
+  voice?: string;
+  prompt?: string;
+  ambience?: string;
+  responseSpeed?: number;
+  hangUpOnVoicemail?: boolean;
+  endCallAutomatically?: boolean;
+  bookCalSlot?: boolean;
+  transferToHuman?: boolean;
 }
 
 const STORAGE_KEY = "linked_ai_agents_list";
@@ -70,13 +97,49 @@ const loadAgents = (): Agent[] => {
   }
 };
 
+const PRESETS = [
+  { id: "sales", label: "Sales Outreach", desc: "Qualify leads and book meetings" },
+  { id: "support", label: "Customer Support", desc: "Answer questions and resolve issues" },
+  { id: "survey", label: "Survey / Feedback", desc: "Collect responses from customers" },
+  { id: "reminder", label: "Appointment Reminder", desc: "Confirm and reschedule bookings" },
+];
+
+const VOICES = [
+  { id: "mia", label: "Mia — Warm female (EN-US)" },
+  { id: "salma", label: "Salma — Professional female (EN-GB)" },
+  { id: "sarah", label: "Sarah — Friendly female (EN-AU)" },
+  { id: "james", label: "James — Confident male (EN-US)" },
+];
+
+const AMBIENCES = [
+  { id: "none", label: "None (silent)" },
+  { id: "office", label: "Office background" },
+  { id: "cafe", label: "Cafe" },
+  { id: "callcenter", label: "Call center" },
+];
+
+const defaultCreateForm = {
+  preset: "sales",
+  voice: "mia",
+  internalName: "",
+  prompt: "",
+  ambience: "none",
+  responseSpeed: 5,
+  hangUpOnVoicemail: true,
+  endCallAutomatically: true,
+  bookCalSlot: false,
+  transferToHuman: false,
+};
+
 const AIAgentsPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
   const [agents, setAgents] = useState<Agent[]>(loadAgents);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [viewing, setViewing] = useState<Agent | null>(null);
-  const [form, setForm] = useState({ internalName: "", agentId: "", phoneNumber: "" });
+  const [linkForm, setLinkForm] = useState({ internalName: "", agentId: "", phoneNumber: "" });
+  const [createForm, setCreateForm] = useState(defaultCreateForm);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
@@ -95,30 +158,51 @@ const AIAgentsPage = () => {
     navigate("/login", { replace: true });
   };
 
-  const openConnect = () => {
-    setForm({ internalName: "", agentId: "", phoneNumber: "" });
-    setDialogOpen(true);
+  const openLink = () => {
+    setLinkForm({ internalName: "", agentId: "", phoneNumber: "" });
+    setLinkOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const openCreate = () => {
+    setCreateForm(defaultCreateForm);
+    setCreateOpen(true);
+  };
+
+  const handleLinkSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const { internalName, agentId, phoneNumber } = form;
+    const { internalName, agentId, phoneNumber } = linkForm;
     if (!internalName.trim() || !agentId.trim() || !phoneNumber.trim()) return;
     setAgents((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
+        kind: "linked",
         internalName: internalName.trim(),
         agentId: agentId.trim(),
         phoneNumber: phoneNumber.trim(),
       },
     ]);
-    setForm({ internalName: "", agentId: "", phoneNumber: "" });
-    setDialogOpen(false);
+    setLinkOpen(false);
+  };
+
+  const handleCreateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createForm.internalName.trim() || !createForm.prompt.trim()) return;
+    setAgents((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        kind: "created",
+        ...createForm,
+        internalName: createForm.internalName.trim(),
+        prompt: createForm.prompt.trim(),
+      },
+    ]);
+    setCreateOpen(false);
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Delete this linked agent?")) {
+    if (confirm("Delete this agent?")) {
       setAgents((prev) => prev.filter((a) => a.id !== id));
     }
   };
@@ -200,7 +284,7 @@ const AIAgentsPage = () => {
                 </span>
               </div>
               <p className="text-sm text-slate-500 mt-1">
-                Manage your linked AI voice agents
+                Create new voice agents or link existing ones
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -215,11 +299,11 @@ const AIAgentsPage = () => {
                 <Settings className="h-4 w-4" />
               </button>
               <Button
-                onClick={openConnect}
+                onClick={openCreate}
                 className="inline-flex items-center gap-2 px-4 py-2 h-auto rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
               >
                 <Plus className="h-4 w-4" />
-                Connect via Agent ID
+                Create Agent
               </Button>
             </div>
           </div>
@@ -230,17 +314,24 @@ const AIAgentsPage = () => {
               <div className="h-16 w-16 rounded-full bg-gradient-to-br from-cyan-50 to-purple-50 flex items-center justify-center mb-4">
                 <Mic className="h-7 w-7 text-cyan-500" />
               </div>
-              <h2 className="text-lg font-semibold text-slate-900">No Agents Linked</h2>
+              <h2 className="text-lg font-semibold text-slate-900">No Agents Yet</h2>
               <p className="text-sm text-slate-500 mt-1 max-w-sm">
-                You haven't linked any voice agents yet. Connect your first agent to get started.
+                Create a new voice agent to get started, or link one you already have.
               </p>
               <Button
-                onClick={openConnect}
+                onClick={openCreate}
                 className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 h-auto rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
               >
                 <Plus className="h-4 w-4" />
-                Connect via Agent ID
+                Create Agent
               </Button>
+              <button
+                onClick={openLink}
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-cyan-600 hover:text-cyan-700 transition-colors"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                Connect via Agent ID
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -256,16 +347,31 @@ const AIAgentsPage = () => {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-slate-900 truncate">{agent.internalName}</h3>
-                        <p className="text-xs text-slate-500 truncate">{agent.agentId}</p>
+                        <p className="text-xs text-slate-500 truncate capitalize">
+                          {agent.kind === "linked" ? "Linked agent" : `Created · ${agent.preset}`}
+                        </p>
                       </div>
                     </div>
                     <div className="space-y-1 mb-4">
-                      <div className="text-xs text-slate-500">
-                        <span className="font-medium text-slate-700">Agent ID:</span> {agent.agentId}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        <span className="font-medium text-slate-700">Phone:</span> {agent.phoneNumber}
-                      </div>
+                      {agent.kind === "linked" ? (
+                        <>
+                          <div className="text-xs text-slate-500">
+                            <span className="font-medium text-slate-700">Agent ID:</span> {agent.agentId}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            <span className="font-medium text-slate-700">Phone:</span> {agent.phoneNumber}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xs text-slate-500">
+                            <span className="font-medium text-slate-700">Voice:</span> {agent.voice}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            <span className="font-medium text-slate-700">Ambience:</span> {agent.ambience}
+                          </div>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
                       <button
@@ -290,7 +396,7 @@ const AIAgentsPage = () => {
       </main>
 
       {/* Link Agent dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Link New Agent</DialogTitle>
@@ -298,13 +404,13 @@ const AIAgentsPage = () => {
               Enter the Agent ID from your provider dashboard.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleLinkSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="internalName">Internal Name</Label>
               <Input
                 id="internalName"
-                value={form.internalName}
-                onChange={(e) => setForm({ ...form, internalName: e.target.value })}
+                value={linkForm.internalName}
+                onChange={(e) => setLinkForm({ ...linkForm, internalName: e.target.value })}
                 placeholder="e.g., Sales Bot v1"
                 required
               />
@@ -313,8 +419,8 @@ const AIAgentsPage = () => {
               <Label htmlFor="agentId">Agent ID</Label>
               <Input
                 id="agentId"
-                value={form.agentId}
-                onChange={(e) => setForm({ ...form, agentId: e.target.value })}
+                value={linkForm.agentId}
+                onChange={(e) => setLinkForm({ ...linkForm, agentId: e.target.value })}
                 placeholder="agent_..."
                 required
               />
@@ -324,8 +430,8 @@ const AIAgentsPage = () => {
               <Input
                 id="phoneNumber"
                 type="tel"
-                value={form.phoneNumber}
-                onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+                value={linkForm.phoneNumber}
+                onChange={(e) => setLinkForm({ ...linkForm, phoneNumber: e.target.value })}
                 placeholder="+1234567890"
                 required
               />
@@ -334,11 +440,7 @@ const AIAgentsPage = () => {
               </p>
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setLinkOpen(false)}>
                 Cancel
               </Button>
               <Button
@@ -352,26 +454,253 @@ const AIAgentsPage = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Create Agent dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Agent</DialogTitle>
+            <DialogDescription>
+              Configure your AI voice agent's personality, voice, and behaviour.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateSubmit} className="space-y-6">
+            {/* Presets */}
+            <div className="space-y-2">
+              <Label>Presets</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setCreateForm({ ...createForm, preset: p.id })}
+                    className={cn(
+                      "text-left p-3 rounded-xl border transition-all",
+                      createForm.preset === p.id
+                        ? "border-cyan-400 bg-cyan-50/50 ring-2 ring-cyan-100"
+                        : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <p className="text-sm font-semibold text-slate-900">{p.label}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{p.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Voice */}
+            <div className="space-y-2">
+              <Label htmlFor="voice">Voice</Label>
+              <Select
+                value={createForm.voice}
+                onValueChange={(v) => setCreateForm({ ...createForm, voice: v })}
+              >
+                <SelectTrigger id="voice">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VOICES.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Agent Name */}
+            <div className="space-y-2">
+              <Label htmlFor="agentName">Agent Name</Label>
+              <Input
+                id="agentName"
+                value={createForm.internalName}
+                onChange={(e) => setCreateForm({ ...createForm, internalName: e.target.value })}
+                placeholder="e.g., Sales Outreach Bot"
+                required
+              />
+            </div>
+
+            {/* Script / Prompt */}
+            <div className="space-y-2">
+              <Label htmlFor="prompt">Script / Prompt</Label>
+              <Textarea
+                id="prompt"
+                value={createForm.prompt}
+                onChange={(e) => setCreateForm({ ...createForm, prompt: e.target.value })}
+                placeholder="You are a friendly sales representative for..."
+                rows={6}
+                required
+              />
+              <p className="text-xs text-slate-500">
+                Describe the agent's role, tone, and objectives.
+              </p>
+            </div>
+
+            {/* Background Ambience */}
+            <div className="space-y-2">
+              <Label htmlFor="ambience" className="flex items-center gap-1.5">
+                <Waves className="h-3.5 w-3.5" /> Background Ambience
+              </Label>
+              <Select
+                value={createForm.ambience}
+                onValueChange={(v) => setCreateForm({ ...createForm, ambience: v })}
+              >
+                <SelectTrigger id="ambience">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AMBIENCES.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Response Speed */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5">
+                  <Gauge className="h-3.5 w-3.5" /> Response Speed
+                </Label>
+                <span className="text-xs font-medium text-slate-700">
+                  {createForm.responseSpeed}/10
+                </span>
+              </div>
+              <Slider
+                min={1}
+                max={10}
+                step={1}
+                value={[createForm.responseSpeed]}
+                onValueChange={(v) => setCreateForm({ ...createForm, responseSpeed: v[0] })}
+              />
+              <div className="flex justify-between text-xs text-slate-500">
+                <span>Thoughtful</span>
+                <span>Snappy</span>
+              </div>
+            </div>
+
+            {/* Hang up on voicemail */}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200">
+              <div className="flex items-center gap-3">
+                <Voicemail className="h-4 w-4 text-slate-500" />
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Hang Up on Voicemail</p>
+                  <p className="text-xs text-slate-500">Automatically end the call if voicemail is detected.</p>
+                </div>
+              </div>
+              <Switch
+                checked={createForm.hangUpOnVoicemail}
+                onCheckedChange={(c) => setCreateForm({ ...createForm, hangUpOnVoicemail: c })}
+              />
+            </div>
+
+            {/* Tools */}
+            <div className="space-y-2">
+              <Label>Tools</Label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <PhoneOff className="h-4 w-4 text-slate-500" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">End Call Automatically</p>
+                      <p className="text-xs text-slate-500">Let the agent hang up when the conversation is complete.</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={createForm.endCallAutomatically}
+                    onCheckedChange={(c) => setCreateForm({ ...createForm, endCallAutomatically: c })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <CalendarCheck className="h-4 w-4 text-slate-500" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Book a Cal.com Slot</p>
+                      <p className="text-xs text-slate-500">Allow the agent to book meetings via Cal.com.</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={createForm.bookCalSlot}
+                    onCheckedChange={(c) => setCreateForm({ ...createForm, bookCalSlot: c })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <PhoneForwarded className="h-4 w-4 text-slate-500" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Transfer to a Human</p>
+                      <p className="text-xs text-slate-500">Warm-transfer the call to a human agent when needed.</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={createForm.transferToHuman}
+                    onCheckedChange={(c) => setCreateForm({ ...createForm, transferToHuman: c })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-95"
+              >
+                Create Agent
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* View dialog */}
       <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>{viewing?.internalName}</DialogTitle>
-            <DialogDescription>{viewing?.agentId}</DialogDescription>
+            <DialogDescription>
+              {viewing?.kind === "linked" ? "Linked agent" : "Created agent"}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Internal Name</p>
-              <p className="text-slate-900 mt-1">{viewing?.internalName}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Agent ID</p>
-              <p className="text-slate-900 mt-1">{viewing?.agentId}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Phone Number</p>
-              <p className="text-slate-900 mt-1">{viewing?.phoneNumber}</p>
-            </div>
+            {viewing?.kind === "linked" ? (
+              <>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Agent ID</p>
+                  <p className="text-slate-900 mt-1">{viewing?.agentId}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Phone Number</p>
+                  <p className="text-slate-900 mt-1">{viewing?.phoneNumber}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Preset</p>
+                  <p className="text-slate-900 mt-1 capitalize">{viewing?.preset}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Voice</p>
+                  <p className="text-slate-900 mt-1">{viewing?.voice}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Ambience</p>
+                  <p className="text-slate-900 mt-1">{viewing?.ambience}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Response Speed</p>
+                  <p className="text-slate-900 mt-1">{viewing?.responseSpeed}/10</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Prompt</p>
+                  <p className="text-slate-900 mt-1 whitespace-pre-wrap">{viewing?.prompt}</p>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
