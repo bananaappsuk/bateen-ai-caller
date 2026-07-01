@@ -97,8 +97,31 @@ const filterTabs: Array<{ label: string; value: "All" | LeadStatus }> = [
 const LeadsPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
-  const [leads] = useState<Lead[]>(loadLeads);
+  const [leads, setLeads] = useState<Lead[]>(loadLeads);
   const [activeTab, setActiveTab] = useState<"All" | LeadStatus>("All");
+  const [isReviewing, setIsReviewing] = useState(false);
+
+  const handleReReview = useCallback(async () => {
+    if (isReviewing) return;
+    setIsReviewing(true);
+    try {
+      const latest = await new Promise<Lead[]>((resolve, reject) => {
+        setTimeout(() => {
+          try {
+            resolve(loadLeads());
+          } catch (e) {
+            reject(e);
+          }
+        }, 900);
+      });
+      setLeads(latest);
+      toast.success("Lead list updated successfully.");
+    } catch {
+      toast.error("Unable to fetch the latest leads. Please try again.");
+    } finally {
+      setIsReviewing(false);
+    }
+  }, [isReviewing]);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
