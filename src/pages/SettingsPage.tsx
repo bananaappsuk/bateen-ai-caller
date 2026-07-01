@@ -544,6 +544,127 @@ const SettingsPage = () => {
                   </div>
                 </div>
               </form>
+            ) : activeTab === "DNC List" ? (
+              <div className="max-w-3xl space-y-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Do Not Call List</h2>
+                    <p className="text-sm text-slate-500 mt-1 max-w-xl">
+                      Numbers in this list will be blocked from being called, even if they appear in a campaign CSV.
+                    </p>
+                  </div>
+                  <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
+                    <ShieldOff className="h-3.5 w-3.5" />
+                    {dncList.length} blocked
+                  </span>
+                </div>
+
+                <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm space-y-4">
+                  <Label htmlFor="dncInput" className="text-sm font-medium text-slate-900">
+                    Add phone number
+                  </Label>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Input
+                      id="dncInput"
+                      value={dncInput}
+                      onChange={(e) => {
+                        setDncInput(e.target.value);
+                        if (dncError) setDncError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddDnc();
+                        }
+                      }}
+                      placeholder="e.g. +447700900123"
+                      className="h-11 flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDnc}
+                      className="h-11 px-6 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {dncError && (
+                    <p className="text-sm text-red-600">{dncError}</p>
+                  )}
+                  <p className="text-xs text-slate-500">
+                    Use international (E.164) format starting with a country code, e.g. +44 for the UK.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-slate-900">Blocked numbers</h3>
+                    <span className="text-xs text-slate-500">{dncList.length} total</span>
+                  </div>
+                  {dncList.length === 0 ? (
+                    <div className="py-10 text-center">
+                      <div className="mx-auto h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+                        <ShieldOff className="h-5 w-5 text-slate-400" />
+                      </div>
+                      <p className="text-sm text-slate-500">No numbers blocked yet.</p>
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-slate-100">
+                      {dncList.map((entry) => (
+                        <li
+                          key={entry.number}
+                          className="flex items-center justify-between gap-4 py-3"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-slate-900 font-mono">
+                              {entry.number}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Added{" "}
+                              {new Date(entry.addedAt).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPendingRemove(entry.number)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <AlertDialog
+                  open={pendingRemove !== null}
+                  onOpenChange={(open) => !open && setPendingRemove(null)}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove blocked number?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {pendingRemove} will be removed from your Do Not Call list and can be dialed by future campaigns.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => pendingRemove && handleRemoveDnc(pendingRemove)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             ) : (
               <div className="py-16 text-center">
                 <h2 className="text-lg font-semibold text-slate-900">{activeTab}</h2>
