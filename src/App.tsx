@@ -12,6 +12,7 @@ import DashboardPage from "./pages/DashboardPage.tsx";
 import AIAgentsPage from "./pages/AIAgentsPage.tsx";
 import CreateAgentPage from "./pages/CreateAgentPage.tsx";
 import CampaignsPage from "./pages/CampaignsPage.tsx";
+import CreateCampaignPage from "./pages/CreateCampaignPage.tsx";
 import LeadsPage from "./pages/LeadsPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
 import AcademyPage from "./pages/AcademyPage.tsx";
