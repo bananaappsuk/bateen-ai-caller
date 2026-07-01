@@ -87,6 +87,10 @@ const SettingsPage = () => {
     interestedLead: true,
     callbackRequested: true,
   });
+  const [dncList, setDncList] = useState<DncEntry[]>([]);
+  const [dncInput, setDncInput] = useState("");
+  const [dncError, setDncError] = useState<string | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
