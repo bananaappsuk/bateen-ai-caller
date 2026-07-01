@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
@@ -22,17 +22,12 @@ import {
   ChevronsUpDown,
   CreditCard,
   Settings,
+  Play,
+  Search,
+  Clock,
+  MoreVertical,
   BookOpen,
   Plus,
-  PlayCircle,
-  Award,
-  FileText,
-  MoreVertical,
-  Pencil,
-  Trash2,
-  Clock,
-  CheckCircle2,
-  BookMarked,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -47,62 +42,101 @@ const navItems = [
   { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
 ];
 
-const tabs = ["Courses", "My Learning", "Resources", "Certificates"] as const;
-type Tab = (typeof tabs)[number];
+const categories = [
+  "Getting Started",
+  "AI Agents",
+  "Campaigns",
+  "Adding Credits",
+  "Leads",
+  "Support",
+] as const;
+type Category = (typeof categories)[number];
 
-interface Course {
+interface Tutorial {
   id: string;
   title: string;
   description: string;
-  lessons: number;
   duration: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
-  status: "Draft" | "Published";
-  createdAt: string;
+  category: Category;
+  thumbnail: string;
+  videoUrl: string;
 }
 
-const COURSES_KEY = "ai_academy_courses";
+const TUTORIALS_KEY = "ai_academy_tutorials";
 
-const loadCourses = (): Course[] => {
+const defaultTutorials: Tutorial[] = [
+  {
+    id: "tut_1",
+    title: "Welcome to VocalMax",
+    description: "A quick overview of the platform and how to navigate your dashboard.",
+    duration: "3:45",
+    category: "Getting Started",
+    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  },
+  {
+    id: "tut_2",
+    title: "Create Your First AI Agent",
+    description: "Learn how to build a voice agent, choose a voice, and write a call script.",
+    duration: "6:12",
+    category: "AI Agents",
+    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  },
+  {
+    id: "tut_3",
+    title: "Launch a Campaign",
+    description: "Upload leads, assign an agent, and start your first outbound campaign.",
+    duration: "5:30",
+    category: "Campaigns",
+    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  },
+  {
+    id: "tut_4",
+    title: "Adding Credits",
+    description: "How to top up your account and manage billing preferences.",
+    duration: "2:50",
+    category: "Adding Credits",
+    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  },
+  {
+    id: "tut_5",
+    title: "Scoring & Managing Leads",
+    description: "Understand lead statuses, scores, and how to follow up effectively.",
+    duration: "4:18",
+    category: "Leads",
+    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  },
+  {
+    id: "tut_6",
+    title: "Getting Help",
+    description: "Where to find support, documentation, and contact the team.",
+    duration: "2:15",
+    category: "Support",
+    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  },
+];
+
+const loadTutorials = (): Tutorial[] => {
   try {
-    const raw = localStorage.getItem(COURSES_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(TUTORIALS_KEY);
+    return raw ? JSON.parse(raw) : defaultTutorials;
   } catch {
-    return [];
+    return defaultTutorials;
   }
-};
-
-const saveCourses = (courses: Course[]) => {
-  localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
-};
-
-const levelStyles: Record<Course["level"], string> = {
-  Beginner: "bg-emerald-50 text-emerald-600",
-  Intermediate: "bg-amber-50 text-amber-600",
-  Advanced: "bg-red-50 text-red-600",
-};
-
-const statusStyles: Record<Course["status"], string> = {
-  Draft: "bg-slate-100 text-slate-600",
-  Published: "bg-cyan-50 text-cyan-600",
 };
 
 const AcademyPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
-  const [activeTab, setActiveTab] = useState<Tab>("Courses");
-  const [courses, setCourses] = useState<Course[]>(loadCourses);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    lessons: 1,
-    duration: "",
-    level: "Beginner" as Course["level"],
-    status: "Draft" as Course["status"],
-  });
+  const [activeCategory, setActiveCategory] = useState<Category>("Getting Started");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tutorials] = useState<Tutorial[]>(loadTutorials);
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -119,66 +153,23 @@ const AcademyPage = () => {
     navigate("/login", { replace: true });
   };
 
-  const handleAddCourse = () => {
-    setEditingCourse(null);
-    setForm({
-      title: "",
-      description: "",
-      lessons: 1,
-      duration: "",
-      level: "Beginner",
-      status: "Draft",
+  const filteredTutorials = useMemo(() => {
+    return tutorials.filter((t) => {
+      const matchesCategory = t.category === activeCategory;
+      const matchesSearch =
+        searchQuery.trim() === "" ||
+        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
     });
-    setShowAddModal(true);
+  }, [tutorials, activeCategory, searchQuery]);
+
+  const handlePlay = (tutorial: Tutorial) => {
+    setPlayingVideo(tutorial.id);
   };
 
-  const handleEditCourse = (course: Course) => {
-    setEditingCourse(course);
-    setForm({
-      title: course.title,
-      description: course.description,
-      lessons: course.lessons,
-      duration: course.duration,
-      level: course.level,
-      status: course.status,
-    });
-    setMenuOpen(null);
-    setShowAddModal(true);
-  };
-
-  const handleDeleteCourse = (id: string) => {
-    const updated = courses.filter((c) => c.id !== id);
-    setCourses(updated);
-    saveCourses(updated);
-    setMenuOpen(null);
-  };
-
-  const handleSaveCourse = () => {
-    if (!form.title.trim() || !form.duration.trim()) return;
-    if (editingCourse) {
-      const updated = courses.map((c) =>
-        c.id === editingCourse.id
-          ? { ...c, ...form, updatedAt: new Date().toISOString() }
-          : c
-      );
-      setCourses(updated);
-      saveCourses(updated);
-    } else {
-      const newCourse: Course = {
-        id: "course_" + Date.now(),
-        title: form.title,
-        description: form.description,
-        lessons: form.lessons,
-        duration: form.duration,
-        level: form.level,
-        status: form.status,
-        createdAt: new Date().toISOString(),
-      };
-      const updated = [...courses, newCourse];
-      setCourses(updated);
-      saveCourses(updated);
-    }
-    setShowAddModal(false);
+  const closeVideo = () => {
+    setPlayingVideo(null);
   };
 
   return (
@@ -271,15 +262,52 @@ const AcademyPage = () => {
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* Hero Banner */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] p-8 sm:p-10 mb-8 shadow-md">
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <div className="max-w-xl">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">VocalMax Academy</h2>
+                <p className="text-sm sm:text-base text-white/90">
+                  Learn how to get the most out of the platform
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const first = tutorials[0];
+                  if (first) setPlayingVideo(first.id);
+                }}
+                className="shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-colors border border-white/30"
+                aria-label="Play academy intro video"
+              >
+                <Play className="h-6 w-6 sm:h-7 sm:w-7 text-white fill-white ml-1" />
+              </button>
+            </div>
+            {/* Decorative circles */}
+            <div className="absolute top-0 right-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-white/10" />
+            <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-32 w-32 rounded-full bg-white/10" />
+          </div>
+
+          {/* Search */}
+          <div className="relative mb-6 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search tutorials..."
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 shadow-sm"
+            />
+          </div>
+
+          {/* Category Tabs */}
           <div className="mb-6 border-b border-slate-200 overflow-x-auto">
             <div className="flex gap-1 min-w-max">
-              {tabs.map((t) => {
-                const isActive = activeTab === t;
+              {categories.map((cat) => {
+                const isActive = activeCategory === cat;
                 return (
                   <button
-                    key={t}
-                    onClick={() => setActiveTab(t)}
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
                     className={cn(
                       "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
                       isActive
@@ -287,250 +315,109 @@ const AcademyPage = () => {
                         : "border-transparent text-slate-500 hover:text-slate-800"
                     )}
                   >
-                    {t}
+                    {cat}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Content */}
-          {activeTab === "Courses" && (
-            <>
-              {courses.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
-                  <div className="h-16 w-16 mx-auto rounded-full bg-slate-50 flex items-center justify-center mb-4">
-                    <BookOpen className="h-8 w-8 text-slate-300" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-slate-900">No Courses Available</h2>
-                  <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-                    Create your first course to start training your team on AI outbound calling.
-                  </p>
-                  <button
-                    onClick={handleAddCourse}
-                    className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Course
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-slate-500">
-                      {courses.length} course{courses.length > 1 ? "s" : ""}
-                    </p>
-                    <button
-                      onClick={handleAddCourse}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Course
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {courses.map((course) => (
-                      <div
-                        key={course.id}
-                        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md transition-shadow relative"
+          {/* Tutorial Cards */}
+          {filteredTutorials.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
+              <div className="h-16 w-16 mx-auto rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                <BookOpen className="h-8 w-8 text-slate-300" />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">No Tutorials Available</h2>
+              <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+                There are no tutorials in this category yet. Check back soon or try another category.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredTutorials.map((tutorial) => (
+                <div
+                  key={tutorial.id}
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group"
+                >
+                  <div className="relative aspect-video bg-slate-100 overflow-hidden">
+                    <img
+                      src={tutorial.thumbnail}
+                      alt={tutorial.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        onClick={() => handlePlay(tutorial)}
+                        className="h-12 w-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-lg transition-colors"
+                        aria-label={`Play ${tutorial.title}`}
                       >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#00D4FF]/10 to-[#FF6FD8]/10 flex items-center justify-center">
-                            <BookOpen className="h-5 w-5 text-cyan-500" />
-                          </div>
-                          <div className="relative">
-                            <button
-                              onClick={() => setMenuOpen(menuOpen === course.id ? null : course.id)}
-                              className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 transition-colors"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
-                            {menuOpen === course.id && (
-                              <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-100 rounded-xl shadow-lg z-10 overflow-hidden">
-                                <button
-                                  onClick={() => handleEditCourse(course)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteCourse(course.id)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <h3 className="text-base font-semibold text-slate-900 mb-1">{course.title}</h3>
-                        <p className="text-sm text-slate-500 mb-4 line-clamp-2">{course.description}</p>
-                        <div className="flex items-center gap-3 mb-4">
-                          <span className="flex items-center gap-1 text-xs text-slate-500">
-                            <PlayCircle className="h-3.5 w-3.5" />
-                            {course.lessons} lessons
-                          </span>
-                          <span className="flex items-center gap-1 text-xs text-slate-500">
-                            <Clock className="h-3.5 w-3.5" />
-                            {course.duration}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                              levelStyles[course.level]
-                            )}
-                          >
-                            {course.level}
-                          </span>
-                          <span
-                            className={cn(
-                              "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                              statusStyles[course.status]
-                            )}
-                          >
-                            {course.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                        <Play className="h-5 w-5 text-slate-900 fill-slate-900 ml-0.5" />
+                      </button>
+                    </div>
+                    <span className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 text-white text-xs font-medium flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {tutorial.duration}
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-base font-semibold text-slate-900 mb-1 line-clamp-1">
+                      {tutorial.title}
+                    </h3>
+                    <p className="text-sm text-slate-500 line-clamp-2">{tutorial.description}</p>
                   </div>
                 </div>
-              )}
-            </>
-          )}
-
-          {activeTab === "My Learning" && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
-              <div className="h-16 w-16 mx-auto rounded-full bg-slate-50 flex items-center justify-center mb-4">
-                <PlayCircle className="h-8 w-8 text-slate-300" />
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900">My Learning</h2>
-              <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-                Track your progress on enrolled courses. Start a course from the Courses tab to see it here.
-              </p>
-            </div>
-          )}
-
-          {activeTab === "Resources" && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
-              <div className="h-16 w-16 mx-auto rounded-full bg-slate-50 flex items-center justify-center mb-4">
-                <FileText className="h-8 w-8 text-slate-300" />
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900">Resources</h2>
-              <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-                Downloadable guides, scripts, and reference materials will be available here soon.
-              </p>
-            </div>
-          )}
-
-          {activeTab === "Certificates" && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
-              <div className="h-16 w-16 mx-auto rounded-full bg-slate-50 flex items-center justify-center mb-4">
-                <Award className="h-8 w-8 text-slate-300" />
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900">Certificates</h2>
-              <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-                Earn certificates by completing courses. Your achievements will appear here.
-              </p>
+              ))}
             </div>
           )}
         </div>
       </main>
 
-      {/* Add/Edit Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100">
+      {/* Video Modal */}
+      {playingVideo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={closeVideo}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative aspect-video bg-black">
+              {(() => {
+                const tutorial = tutorials.find((t) => t.id === playingVideo);
+                if (!tutorial) return null;
+                const videoId = tutorial.videoUrl.includes("v=")
+                  ? tutorial.videoUrl.split("v=")[1].split("&")[0]
+                  : "";
+                return (
+                  <iframe
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                    title={tutorial.title}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                );
+              })()}
+              <button
+                onClick={closeVideo}
+                className="absolute top-3 right-3 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                aria-label="Close video"
+              >
+                <span className="sr-only">Close</span>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-5 py-4">
               <h3 className="text-lg font-semibold text-slate-900">
-                {editingCourse ? "Edit Course" : "Add Course"}
+                {tutorials.find((t) => t.id === playingVideo)?.title}
               </h3>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300"
-                  placeholder="Course title"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 min-h-[80px] resize-none"
-                  placeholder="Brief description of the course"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Lessons</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.lessons}
-                    onChange={(e) => setForm({ ...form, lessons: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Duration</label>
-                  <input
-                    type="text"
-                    value={form.duration}
-                    onChange={(e) => setForm({ ...form, duration: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300"
-                    placeholder="e.g. 45 min"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Level</label>
-                  <select
-                    value={form.level}
-                    onChange={(e) => setForm({ ...form, level: e.target.value as Course["level"] })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 bg-white"
-                  >
-                    <option>Beginner</option>
-                    <option>Intermediate</option>
-                    <option>Advanced</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as Course["status"] })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 bg-white"
-                  >
-                    <option>Draft</option>
-                    <option>Published</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveCourse}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
-              >
-                {editingCourse ? "Save Changes" : "Create Course"}
-              </button>
+              <p className="text-sm text-slate-500 mt-1">
+                {tutorials.find((t) => t.id === playingVideo)?.description}
+              </p>
             </div>
           </div>
         </div>
