@@ -59,7 +59,7 @@ import logo from "@/assets/ai-tele-caller-logo.png";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard", active: true },
-  { icon: Bot, label: "AI Agents", href: "/ai-agents" },
+  { icon: Bot, label: "AI Agents", href: "/dashboard/agents" },
   { icon: PhoneOutgoing, label: "Campaigns", href: "/dashboard/campaigns" },
   { icon: Users, label: "Leads", href: "/dashboard/leads" },
   { icon: SettingsIcon, label: "Settings", href: "/dashboard/settings" },
