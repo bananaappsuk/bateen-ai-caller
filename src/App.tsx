@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
 import DashboardPage from "./pages/DashboardPage.tsx";
 import AIAgentsPage from "./pages/AIAgentsPage.tsx";
+import CampaignsPage from "./pages/CampaignsPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
