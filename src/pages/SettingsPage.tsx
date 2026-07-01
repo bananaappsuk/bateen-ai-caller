@@ -125,6 +125,12 @@ const SettingsPage = () => {
     toast({ title: "Profile updated", description: "Your changes have been saved." });
   };
 
+  const handleSaveNotifications = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
+    toast({ title: "Notifications saved", description: "Your email alert preferences have been updated." });
+  };
+
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
       {/* Sidebar */}
