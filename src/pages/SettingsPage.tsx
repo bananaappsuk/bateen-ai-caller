@@ -78,6 +78,36 @@ const DNC_KEY = "ai_dnc_list";
 
 type DncEntry = { number: string; addedAt: string };
 
+const CALLING_HOURS_KEY = "ai_calling_hours";
+const DEFAULT_TIMEZONE = "Europe/London";
+
+type DaySchedule = { enabled: boolean; start: string; end: string };
+
+day: string): DaySchedule => ({ enabled: day !== "Saturday" && day !== "Sunday", start: "09:00", end: "18:00" });
+
+const defaultCallingHours: Record<string, DaySchedule> = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+].reduce((acc, day) => {
+  acc[day] = buildDefaultDaySchedule(day);
+  return acc;
+}, {} as Record<string, DaySchedule>);
+
+const timezones = [
+  { value: "Europe/London", label: "London (UK)" },
+  { value: "Europe/Paris", label: "Paris (France)" },
+  { value: "America/New_York", label: "New York (US)" },
+  { value: "America/Los_Angeles", label: "Los Angeles (US)" },
+  { value: "Asia/Dubai", label: "Dubai (UAE)" },
+  { value: "Asia/Singapore", label: "Singapore" },
+  { value: "Australia/Sydney", label: "Sydney (Australia)" },
+];
+
 const SettingsPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
