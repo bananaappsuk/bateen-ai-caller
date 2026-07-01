@@ -17,6 +17,7 @@ import LeadsPage from "./pages/LeadsPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
 import AcademyPage from "./pages/AcademyPage.tsx";
 import SupportPage from "./pages/SupportPage.tsx";
+import ChoosePlanPage from "./pages/ChoosePlanPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 
@@ -51,6 +52,8 @@ const App = () => (
           <Route path="/dashboard/academy" element={<AcademyPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/dashboard/support" element={<SupportPage />} />
+          <Route path="/plans" element={<ChoosePlanPage />} />
+          <Route path="/dashboard/plans" element={<ChoosePlanPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
