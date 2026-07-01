@@ -16,18 +16,7 @@ const DEMO_URL =
 const HeroSection = () => {
   return (
     <>
-      {/* Top CTA bar */}
-      <div className="relative z-20 mt-16 bg-brand-gradient text-white text-center text-sm font-medium py-2 px-4">
-        <span className="inline-flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-          </span>
-          Live demo — our AI will call your phone in seconds
-        </span>
-      </div>
-
-      <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden">
+      <section className="relative z-10 min-h-[88vh] flex items-center justify-center overflow-hidden">
         {/* Background image */}
         <div className="absolute inset-0">
           <img src={heroBg} alt="" className="w-full h-full object-cover opacity-30" />
