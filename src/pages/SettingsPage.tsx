@@ -187,8 +187,9 @@ const SettingsPage = () => {
                 0 Credits
               </div>
               <button
+                onClick={() => changeTab("Billing")}
                 className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
-                aria-label="Settings"
+                aria-label="Billing settings"
               >
                 <Settings className="h-4 w-4" />
               </button>
