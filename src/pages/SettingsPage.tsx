@@ -66,6 +66,12 @@ const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [profile, setProfile] = useState({ fullName: "", companyName: "" });
   const [customAmount, setCustomAmount] = useState("");
+  const [notifications, setNotifications] = useState({
+    email: user?.email ?? "",
+    enableEmail: true,
+    interestedLead: true,
+    callbackRequested: true,
+  });
 
   useEffect(() => {
     if (!user) {
