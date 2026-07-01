@@ -192,8 +192,12 @@ const SettingsPage = () => {
     const q = searchParams.get("tab");
     const match = tabs.find((t) => t.toLowerCase() === (q ?? "").toLowerCase());
     if (match && match !== activeTab) setActiveTab(match);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  useEffect(() => {
+    localStorage.setItem(CALLING_HOURS_KEY, JSON.stringify({ timezone, days: callingHours }));
+  }, [timezone, callingHours]);
 
   const changeTab = (t: Tab) => {
     setActiveTab(t);
