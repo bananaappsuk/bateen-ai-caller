@@ -161,10 +161,7 @@ const AIAgentsPage = () => {
     setLinkOpen(true);
   };
 
-  const openCreate = () => {
-    setCreateForm(defaultCreateForm);
-    setCreateOpen(true);
-  };
+  const openCreate = () => navigate("/ai-agents/create");
 
   const handleLinkSubmit = (e: React.FormEvent) => {
     e.preventDefault();
