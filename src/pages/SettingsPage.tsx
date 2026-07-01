@@ -134,6 +134,32 @@ const SettingsPage = () => {
   const [dncInput, setDncInput] = useState("");
   const [dncError, setDncError] = useState<string | null>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
+  const [callingHours, setCallingHours] = useState<Record<string, DaySchedule>>(() => {
+    try {
+      const raw = localStorage.getItem(CALLING_HOURS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object" && parsed.days) {
+          return { ...defaultCallingHours, ...parsed.days };
+        }
+      }
+    } catch {
+      /* noop */
+    }
+    return defaultCallingHours;
+  });
+  const [timezone, setTimezone] = useState(() => {
+    try {
+      const raw = localStorage.getItem(CALLING_HOURS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.timezone) return parsed.timezone;
+      }
+    } catch {
+      /* noop */
+    }
+    return DEFAULT_TIMEZONE;
+  });
 
   useEffect(() => {
     if (!user) {
