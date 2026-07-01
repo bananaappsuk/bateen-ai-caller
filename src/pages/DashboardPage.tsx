@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { getDevUser, canAccessRoute } from "@/lib/devAuth";
+import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { LogOut, ChevronsUpDown } from "lucide-react";
 import {
   LayoutDashboard,
   Bot,
