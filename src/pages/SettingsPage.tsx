@@ -258,6 +258,97 @@ const SettingsPage = () => {
                   Update Profile
                 </button>
               </form>
+            ) : activeTab === "Billing" ? (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Billing & Plans</h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Manage your credits, top-ups, and subscription plan.
+                  </p>
+                </div>
+
+                {/* Balance + Plan */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 font-medium">
+                      Current Balance
+                    </p>
+                    <p className="mt-2 text-3xl font-bold text-slate-900">0 Credits</p>
+                    <p className="mt-1 text-xs text-slate-500">≈ 0 minutes of calling</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 font-medium">
+                      Current Plan
+                    </p>
+                    <p className="mt-2 text-3xl font-bold text-slate-900">Free</p>
+                    <button
+                      onClick={() => navigate("/plans")}
+                      className="mt-2 text-xs font-medium text-cyan-600 hover:text-cyan-700"
+                    >
+                      Compare Plans →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Top-up Credits */}
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 mb-1">Top-up Credits</h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Add credits to your account. 1 credit ≈ 1 minute of calling.
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { credits: 100, price: 28 },
+                      { credits: 500, price: 140 },
+                      { credits: 1000, price: 280 },
+                      { credits: 2500, price: 700 },
+                    ].map((pkg) => (
+                      <button
+                        key={pkg.credits}
+                        className="text-left rounded-xl border border-slate-200 bg-white p-4 hover:border-cyan-300 hover:shadow-sm transition-all"
+                      >
+                        <p className="text-lg font-bold text-slate-900">{pkg.credits} credits</p>
+                        <p className="text-sm text-slate-500 mt-1">${pkg.price} USD</p>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="customAmount">Custom Amount (credits)</Label>
+                      <Input
+                        id="customAmount"
+                        type="number"
+                        min={1}
+                        placeholder="e.g. 350"
+                        value={customAmount}
+                        onChange={(e) => setCustomAmount(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
+                    >
+                      Buy Credits
+                    </button>
+                  </div>
+                </div>
+
+                {/* Compare Plans */}
+                <div className="rounded-2xl border border-slate-100 bg-gradient-to-r from-cyan-50 to-pink-50 p-5 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Need more capacity?</p>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Compare all plans and pick the best fit for your team.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate("/plans")}
+                    className="px-4 py-2 rounded-lg bg-white text-sm font-semibold text-slate-900 border border-slate-200 hover:border-slate-300"
+                  >
+                    Compare Plans
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="py-16 text-center">
                 <h2 className="text-lg font-semibold text-slate-900">{activeTab}</h2>
