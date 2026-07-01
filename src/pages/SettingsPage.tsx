@@ -256,6 +256,31 @@ const SettingsPage = () => {
     toast({ title: "Number removed", description: `${num} removed from the DNC list.` });
   };
 
+  const updateDaySchedule = (day: string, patch: Partial<DaySchedule>) => {
+    setCallingHours((prev) => ({ ...prev, [day]: { ...prev[day], ...patch } }));
+  };
+
+  const copyMondayToWeekdays = () => {
+    const monday = callingHours["Monday"];
+    ["Tuesday", "Wednesday", "Thursday", "Friday"].forEach((day) =>
+      updateDaySchedule(day, { enabled: monday.enabled, start: monday.start, end: monday.end })
+    );
+    toast({ title: "Schedule copied", description: "Monday's hours applied to Tuesday–Friday." });
+  };
+
+  const copyMondayToAll = () => {
+    const monday = callingHours["Monday"];
+    ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].forEach((day) =>
+      updateDaySchedule(day, { enabled: monday.enabled, start: monday.start, end: monday.end })
+    );
+    toast({ title: "Schedule copied", description: "Monday's hours applied to all days." });
+  };
+
+  const handleSaveCallingHours = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem(CALLING_HOURS_KEY, JSON.stringify({ timezone, days: callingHours }));
+    toast({ title: "Calling hours saved", description: "Your schedule has been updated." });
+  };
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
