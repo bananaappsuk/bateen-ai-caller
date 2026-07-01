@@ -14,6 +14,7 @@ import CampaignsPage from "./pages/CampaignsPage.tsx";
 import LeadsPage from "./pages/LeadsPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
 import AcademyPage from "./pages/AcademyPage.tsx";
+import SupportPage from "./pages/SupportPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 
