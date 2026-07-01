@@ -204,7 +204,7 @@ const SettingsPage = () => {
                 return (
                   <button
                     key={t}
-                    onClick={() => setActiveTab(t)}
+                    onClick={() => changeTab(t)}
                     className={cn(
                       "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
                       isActive
