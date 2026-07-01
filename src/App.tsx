@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
 import DashboardPage from "./pages/DashboardPage.tsx";
 import AIAgentsPage from "./pages/AIAgentsPage.tsx";
+import CreateAgentPage from "./pages/CreateAgentPage.tsx";
 import CampaignsPage from "./pages/CampaignsPage.tsx";
 import LeadsPage from "./pages/LeadsPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
