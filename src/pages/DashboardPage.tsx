@@ -114,25 +114,28 @@ const onboardingSteps = [
     description: "Pick a voice and write your call script.",
     button: "Create agent",
     active: true,
-    route: "/dashboard/agents",
+    route: "/dashboard/agents/create",
   },
   {
     title: "Attach a phone number",
     description: "Give your agent a number so it can place calls.",
     button: "Attach number",
-    active: false,
+    active: true,
+    route: "/dashboard/agents",
   },
   {
     title: "Upload your leads",
     description: "Import a CSV of the people you want to call.",
     button: "Upload leads",
-    active: false,
+    active: true,
+    route: "/dashboard/agents",
   },
   {
     title: "Start your first campaign",
     description: "Point your agent at your leads and go live.",
     button: "Start campaign",
-    active: false,
+    active: true,
+    route: "/dashboard/agents",
   },
 ];
 
