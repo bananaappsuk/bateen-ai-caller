@@ -642,6 +642,149 @@ const SettingsPage = () => {
                   </div>
                 </div>
               </form>
+            ) : activeTab === "Calling Hours" ? (
+              <div className="max-w-3xl space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Calling Hours</h2>
+                  <p className="text-sm text-slate-500 mt-1 max-w-xl">
+                    Restrict when your campaigns can dial. Calls outside these hours will be skipped automatically and resumed when the window opens.
+                  </p>
+                </div>
+
+                {/* Timezone + quick actions */}
+                <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="timezone" className="text-sm font-medium text-slate-900">
+                      Timezone
+                    </Label>
+                    <Select value={timezone} onValueChange={setTimezone}>
+                      <SelectTrigger id="timezone" className="w-full sm:w-72">
+                        <SelectValue placeholder="Select timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timezones.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500">
+                      All times below are interpreted in this timezone.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={copyMondayToWeekdays}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      Copy Monday → Tue–Fri
+                    </button>
+                    <button
+                      type="button"
+                      onClick={copyMondayToAll}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      Copy Monday → All days
+                    </button>
+                  </div>
+                </div>
+
+                {/* Weekly schedule */}
+                <form onSubmit={handleSaveCallingHours} className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm space-y-6">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-semibold text-slate-900">Weekly Schedule</h3>
+                    <p className="text-sm text-slate-500">Set the hours when your campaigns can place calls.</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => {
+                      const schedule = callingHours[day];
+                      return (
+                        <div
+                          key={day}
+                          className={cn(
+                            "flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 py-4 border-b border-slate-100 last:border-0",
+                            !schedule.enabled && "bg-slate-50/50 rounded-xl -mx-3 px-3"
+                          )}
+                        >
+                          <div className="flex-1 min-w-[100px]">
+                            <span
+                              className={cn(
+                                "text-sm font-semibold",
+                                schedule.enabled ? "text-slate-900" : "text-slate-400"
+                              )}
+                            >
+                              {day}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-4 flex-wrap">
+                            <Switch
+                              id={`${day}-enabled`}
+                              checked={schedule.enabled}
+                              onCheckedChange={(checked) =>
+                                updateDaySchedule(day, { enabled: checked })
+                              }
+                              className="data-[state=checked]:bg-cyan-500"
+                            />
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id={`${day}-start`}
+                                type="time"
+                                value={schedule.start}
+                                onChange={(e) =>
+                                  updateDaySchedule(day, { start: e.target.value })
+                                }
+                                disabled={!schedule.enabled}
+                                className="w-28 h-10"
+                              />
+                              <span className="text-sm text-slate-400">→</span>
+                              <Input
+                                id={`${day}-end`}
+                                type="time"
+                                value={schedule.end}
+                                onChange={(e) =>
+                                  updateDaySchedule(day, { end: e.target.value })
+                                }
+                                disabled={!schedule.enabled}
+                                className="w-28 h-10"
+                              />
+                            </div>
+                            <div className="w-16 text-right">
+                              {!schedule.enabled && (
+                                <span className="text-xs font-medium text-slate-400">No calls</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
+                    >
+                      Save Calling Hours
+                    </button>
+                  </div>
+                </form>
+
+                {/* Help card */}
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 flex items-start gap-3">
+                  <Info className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">How this works</p>
+                    <p className="text-sm text-amber-700 mt-0.5">
+                      Campaigns stay running outside these hours — they just pause dialling. As soon as the window opens, calls resume automatically. No credits are used while paused.
+                    </p>
+                  </div>
+                </div>
+              </div>
             ) : activeTab === "DNC List" ? (
               <div className="max-w-3xl space-y-6">
                 <div className="flex items-start justify-between gap-4">
