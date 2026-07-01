@@ -116,11 +116,7 @@ const CampaignsPage = () => {
     navigate("/login", { replace: true });
   };
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm({ name: "", agent: "", status: "Draft", leads: 0, calls: 0, description: "" });
-    setDialogOpen(true);
-  };
+  const openCreate = () => navigate("/dashboard/campaigns/create");
 
   const openEdit = (campaign: Campaign) => {
     setEditing(campaign);

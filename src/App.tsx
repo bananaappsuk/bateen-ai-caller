@@ -12,6 +12,7 @@ import DashboardPage from "./pages/DashboardPage.tsx";
 import AIAgentsPage from "./pages/AIAgentsPage.tsx";
 import CreateAgentPage from "./pages/CreateAgentPage.tsx";
 import CampaignsPage from "./pages/CampaignsPage.tsx";
+import CreateCampaignPage from "./pages/CreateCampaignPage.tsx";
 import LeadsPage from "./pages/LeadsPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
 import AcademyPage from "./pages/AcademyPage.tsx";
@@ -39,7 +40,9 @@ const App = () => (
           <Route path="/dashboard/agents" element={<AIAgentsPage />} />
           <Route path="/dashboard/agents/create" element={<CreateAgentPage />} />
           <Route path="/campaigns" element={<CampaignsPage />} />
+          <Route path="/campaigns/create" element={<CreateCampaignPage />} />
           <Route path="/dashboard/campaigns" element={<CampaignsPage />} />
+          <Route path="/dashboard/campaigns/create" element={<CreateCampaignPage />} />
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/dashboard/leads" element={<LeadsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
