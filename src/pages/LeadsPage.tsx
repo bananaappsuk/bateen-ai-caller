@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
   DropdownMenu,
@@ -96,8 +97,31 @@ const filterTabs: Array<{ label: string; value: "All" | LeadStatus }> = [
 const LeadsPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
-  const [leads] = useState<Lead[]>(loadLeads);
+  const [leads, setLeads] = useState<Lead[]>(loadLeads);
   const [activeTab, setActiveTab] = useState<"All" | LeadStatus>("All");
+  const [isReviewing, setIsReviewing] = useState(false);
+
+  const handleReReview = useCallback(async () => {
+    if (isReviewing) return;
+    setIsReviewing(true);
+    try {
+      const latest = await new Promise<Lead[]>((resolve, reject) => {
+        setTimeout(() => {
+          try {
+            resolve(loadLeads());
+          } catch (e) {
+            reject(e);
+          }
+        }, 900);
+      });
+      setLeads(latest);
+      toast.success("Lead list updated successfully.");
+    } catch {
+      toast.error("Unable to fetch the latest leads. Please try again.");
+    } finally {
+      setIsReviewing(false);
+    }
+  }, [isReviewing]);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
@@ -246,9 +270,17 @@ const LeadsPage = () => {
               >
                 <Settings className="h-4 w-4" />
               </button>
-              <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-100 shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
-                <RefreshCw className="h-4 w-4" />
-                Re-review Leads
+              <button
+                onClick={handleReReview}
+                disabled={isReviewing}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-100 shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isReviewing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                {isReviewing ? "Reviewing..." : "Re-review Leads"}
               </button>
               <button
                 onClick={handleExport}
