@@ -9,13 +9,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, ChevronsUpDown } from "lucide-react";
 import {
   LayoutDashboard,
   Bot,
   PhoneOutgoing,
   Users,
-  Settings,
+  Settings as SettingsIcon,
   GraduationCap,
   LifeBuoy,
   Lock,
@@ -27,6 +26,11 @@ import {
   PhoneCall,
   ClipboardList,
   AlertTriangle,
+  LogOut,
+  ChevronsUpDown,
+  CreditCard,
+  Settings,
+  X,
 } from "lucide-react";
 import {
   Card,
@@ -58,7 +62,7 @@ const navItems = [
   { icon: Bot, label: "AI Agents", href: "/dashboard/agents" },
   { icon: PhoneOutgoing, label: "Campaigns", href: "/dashboard/campaigns" },
   { icon: Users, label: "Leads", href: "/dashboard/leads" },
-  { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+  { icon: SettingsIcon, label: "Settings", href: "/dashboard/settings" },
   { icon: GraduationCap, label: "Academy", href: "/dashboard/academy", locked: true },
   { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
 ];
@@ -87,7 +91,7 @@ const statCards = [
   },
   {
     title: "Agent Uptime",
-    value: "0%",
+    value: "99.9%",
     icon: Activity,
     iconColor: "text-emerald-500",
     iconBg: "bg-emerald-50",
@@ -104,8 +108,39 @@ const callVolumeData = [
   { day: "Sun", calls: 0 },
 ];
 
+const onboardingSteps = [
+  {
+    title: "Create your first AI agent",
+    description: "Pick a voice and write your call script.",
+    button: "Create agent",
+    active: true,
+  },
+  {
+    title: "Attach a phone number",
+    description: "Give your agent a number so it can place calls.",
+    button: "Attach number",
+    active: false,
+  },
+  {
+    title: "Upload your leads",
+    description: "Import a CSV of the people you want to call.",
+    button: "Upload leads",
+    active: false,
+  },
+  {
+    title: "Start your first campaign",
+    description: "Point your agent at your leads and go live.",
+    button: "Start campaign",
+    active: false,
+  },
+];
+
 const DashboardPage = () => {
   const [timeRange, setTimeRange] = useState("7d");
+  const [bannerOpen, setBannerOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !localStorage.getItem("dashboard_onboarding_dismissed");
+  });
   const navigate = useNavigate();
   const user = getDevUser();
 
@@ -116,6 +151,18 @@ const DashboardPage = () => {
   if (!user) return null;
 
   const visibleNav = navItems.filter((item) => canAccessRoute(user, item.href));
+
+  const handleSignOut = () => {
+    devSignOut();
+    navigate("/login", { replace: true });
+  };
+
+  const dismissBanner = () => {
+    setBannerOpen(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dashboard_onboarding_dismissed", "1");
+    }
+  };
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
@@ -180,10 +227,7 @@ const DashboardPage = () => {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-red-600 focus:text-red-600 cursor-pointer"
-                onClick={() => {
-                  devSignOut();
-                  navigate("/login", { replace: true });
-                }}
+                onClick={handleSignOut}
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign out
@@ -197,12 +241,74 @@ const DashboardPage = () => {
       <main className="flex-1 ml-[260px] min-h-screen">
         <div className="max-w-7xl mx-auto px-6 py-8">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard Overview</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Welcome back. Here is your AI fleet performance.
-            </p>
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Dashboard Overview</h1>
+              <p className="text-sm text-slate-500 mt-1">
+                Welcome back. Here is your AI fleet performance.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
+                <CreditCard className="h-4 w-4 text-cyan-500" />
+                0 Credits
+              </div>
+              <button
+                className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+                aria-label="Settings"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700 hover:text-red-600 hover:border-red-100 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
+            </div>
           </div>
+
+          {/* Onboarding banner */}
+          {bannerOpen && (
+            <div className="relative mb-8 rounded-2xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] p-6 text-white shadow-soft overflow-hidden">
+              <button
+                onClick={dismissBanner}
+                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                aria-label="Dismiss onboarding"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="mb-6 pr-8">
+                <h2 className="text-lg font-semibold">Get started with AI Tele Caller</h2>
+                <p className="text-sm text-white/90 mt-1">0 of 4 steps complete</p>
+              </div>
+              <div className="grid gap-4">
+                {onboardingSteps.map((step, i) => (
+                  <div key={step.title} className="flex items-start gap-4">
+                    <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold shrink-0">
+                      {i + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold">{step.title}</h3>
+                      <p className="text-xs text-white/80 mt-0.5">{step.description}</p>
+                    </div>
+                    <button
+                      disabled={!step.active}
+                      className={cn(
+                        "shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                        step.active
+                          ? "bg-white text-slate-900 hover:bg-white/90"
+                          : "bg-white/20 text-white/70 cursor-not-allowed"
+                      )}
+                    >
+                      {step.button} &rarr;
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Stats row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
