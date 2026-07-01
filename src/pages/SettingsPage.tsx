@@ -83,7 +83,11 @@ const DEFAULT_TIMEZONE = "Europe/London";
 
 type DaySchedule = { enabled: boolean; start: string; end: string };
 
-day: string): DaySchedule => ({ enabled: day !== "Saturday" && day !== "Sunday", start: "09:00", end: "18:00" });
+const buildDefaultDaySchedule = (day: string): DaySchedule => ({
+  enabled: day !== "Saturday" && day !== "Sunday",
+  start: "09:00",
+  end: "18:00",
+});
 
 const defaultCallingHours: Record<string, DaySchedule> = [
   "Monday",
