@@ -152,6 +152,38 @@ const SettingsPage = () => {
     toast({ title: "Notifications saved", description: "Your email alert preferences have been updated." });
   };
 
+  const persistDnc = (list: DncEntry[]) => {
+    setDncList(list);
+    localStorage.setItem(DNC_KEY, JSON.stringify(list));
+  };
+
+  const handleAddDnc = () => {
+    const trimmed = dncInput.replace(/\s+/g, "");
+    if (!trimmed) {
+      setDncError("Please enter a phone number.");
+      return;
+    }
+    if (!/^\+[1-9]\d{7,14}$/.test(trimmed)) {
+      setDncError("Enter a valid number in international format (E.164), e.g. +447700900123.");
+      return;
+    }
+    if (dncList.some((e) => e.number === trimmed)) {
+      setDncError("This number is already in the block list.");
+      return;
+    }
+    persistDnc([{ number: trimmed, addedAt: new Date().toISOString() }, ...dncList]);
+    setDncInput("");
+    setDncError(null);
+    toast({ title: "Number blocked", description: `${trimmed} added to the DNC list.` });
+  };
+
+  const handleRemoveDnc = (num: string) => {
+    persistDnc(dncList.filter((e) => e.number !== num));
+    setPendingRemove(null);
+    toast({ title: "Number removed", description: `${num} removed from the DNC list.` });
+  };
+
+
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
       {/* Sidebar */}
