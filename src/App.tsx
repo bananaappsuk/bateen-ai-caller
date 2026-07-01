@@ -12,6 +12,7 @@ import DashboardPage from "./pages/DashboardPage.tsx";
 import AIAgentsPage from "./pages/AIAgentsPage.tsx";
 import CampaignsPage from "./pages/CampaignsPage.tsx";
 import LeadsPage from "./pages/LeadsPage.tsx";
+import SettingsPage from "./pages/SettingsPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,8 @@ const App = () => (
           <Route path="/dashboard/campaigns" element={<CampaignsPage />} />
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/dashboard/leads" element={<LeadsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/dashboard/settings" element={<SettingsPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
