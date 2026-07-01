@@ -25,9 +25,7 @@ import {
   Play,
   Search,
   Clock,
-  MoreVertical,
   BookOpen,
-  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -58,75 +56,61 @@ interface Tutorial {
   description: string;
   duration: string;
   category: Category;
-  thumbnail: string;
-  videoUrl: string;
 }
 
-const TUTORIALS_KEY = "ai_academy_tutorials";
+const TUTORIALS_KEY = "ai_academy_tutorials_v2";
 
-const defaultTutorials: Tutorial[] = [
+const placeholderTutorials: Tutorial[] = [
   {
-    id: "tut_1",
-    title: "Welcome to VocalMax",
-    description: "A quick overview of the platform and how to navigate your dashboard.",
-    duration: "3:45",
+    id: "1",
+    title: "Getting Started",
+    description: "Learn the basics of AI Tele Caller.",
+    duration: "5:00",
     category: "Getting Started",
-    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   },
   {
-    id: "tut_2",
-    title: "Create Your First AI Agent",
-    description: "Learn how to build a voice agent, choose a voice, and write a call script.",
-    duration: "6:12",
+    id: "2",
+    title: "AI Agents Overview",
+    description: "How to create and manage AI voice agents.",
+    duration: "6:00",
     category: "AI Agents",
-    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   },
   {
-    id: "tut_3",
-    title: "Launch a Campaign",
-    description: "Upload leads, assign an agent, and start your first outbound campaign.",
-    duration: "5:30",
+    id: "3",
+    title: "Campaign Basics",
+    description: "How to build your first outbound campaign.",
+    duration: "7:00",
     category: "Campaigns",
-    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   },
   {
-    id: "tut_4",
+    id: "4",
     title: "Adding Credits",
-    description: "How to top up your account and manage billing preferences.",
-    duration: "2:50",
+    description: "How to add credits to your account.",
+    duration: "4:00",
     category: "Adding Credits",
-    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   },
   {
-    id: "tut_5",
-    title: "Scoring & Managing Leads",
-    description: "Understand lead statuses, scores, and how to follow up effectively.",
-    duration: "4:18",
+    id: "5",
+    title: "Lead Scoring",
+    description: "Understanding lead statuses and scoring.",
+    duration: "5:30",
     category: "Leads",
-    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   },
   {
-    id: "tut_6",
-    title: "Getting Help",
-    description: "Where to find support, documentation, and contact the team.",
-    duration: "2:15",
+    id: "6",
+    title: "Support Guide",
+    description: "How to get help and contact support.",
+    duration: "3:00",
     category: "Support",
-    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   },
 ];
 
 const loadTutorials = (): Tutorial[] => {
   try {
     const raw = localStorage.getItem(TUTORIALS_KEY);
-    return raw ? JSON.parse(raw) : defaultTutorials;
+    return raw ? JSON.parse(raw) : placeholderTutorials;
   } catch {
-    return defaultTutorials;
+    return placeholderTutorials;
   }
 };
 
@@ -136,7 +120,6 @@ const AcademyPage = () => {
   const [activeCategory, setActiveCategory] = useState<Category>("Getting Started");
   const [searchQuery, setSearchQuery] = useState("");
   const [tutorials] = useState<Tutorial[]>(loadTutorials);
-  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -163,14 +146,6 @@ const AcademyPage = () => {
       return matchesCategory && matchesSearch;
     });
   }, [tutorials, activeCategory, searchQuery]);
-
-  const handlePlay = (tutorial: Tutorial) => {
-    setPlayingVideo(tutorial.id);
-  };
-
-  const closeVideo = () => {
-    setPlayingVideo(null);
-  };
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
@@ -266,21 +241,17 @@ const AcademyPage = () => {
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] p-8 sm:p-10 mb-8 shadow-md">
             <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
               <div className="max-w-xl">
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">VocalMax Academy</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">AI Tele Caller Academy</h2>
                 <p className="text-sm sm:text-base text-white/90">
-                  Learn how to get the most out of the platform
+                  Learn how to use the AI Tele Caller platform.
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  const first = tutorials[0];
-                  if (first) setPlayingVideo(first.id);
-                }}
-                className="shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-colors border border-white/30"
-                aria-label="Play academy intro video"
+              <div
+                className="shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30"
+                aria-hidden="true"
               >
                 <Play className="h-6 w-6 sm:h-7 sm:w-7 text-white fill-white ml-1" />
-              </button>
+              </div>
             </div>
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-white/10" />
@@ -338,23 +309,10 @@ const AcademyPage = () => {
               {filteredTutorials.map((tutorial) => (
                 <div
                   key={tutorial.id}
-                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group"
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                 >
-                  <div className="relative aspect-video bg-slate-100 overflow-hidden">
-                    <img
-                      src={tutorial.thumbnail}
-                      alt={tutorial.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button
-                        onClick={() => handlePlay(tutorial)}
-                        className="h-12 w-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-lg transition-colors"
-                        aria-label={`Play ${tutorial.title}`}
-                      >
-                        <Play className="h-5 w-5 text-slate-900 fill-slate-900 ml-0.5" />
-                      </button>
-                    </div>
+                  <div className="relative aspect-video bg-black overflow-hidden flex items-center justify-center">
+                    <Play className="h-10 w-10 text-white/70" />
                     <span className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 text-white text-xs font-medium flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {tutorial.duration}
@@ -372,56 +330,6 @@ const AcademyPage = () => {
           )}
         </div>
       </main>
-
-      {/* Video Modal */}
-      {playingVideo && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
-          onClick={closeVideo}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative aspect-video bg-black">
-              {(() => {
-                const tutorial = tutorials.find((t) => t.id === playingVideo);
-                if (!tutorial) return null;
-                const videoId = tutorial.videoUrl.includes("v=")
-                  ? tutorial.videoUrl.split("v=")[1].split("&")[0]
-                  : "";
-                return (
-                  <iframe
-                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-                    title={tutorial.title}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                );
-              })()}
-              <button
-                onClick={closeVideo}
-                className="absolute top-3 right-3 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
-                aria-label="Close video"
-              >
-                <span className="sr-only">Close</span>
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="px-5 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">
-                {tutorials.find((t) => t.id === playingVideo)?.title}
-              </h3>
-              <p className="text-sm text-slate-500 mt-1">
-                {tutorials.find((t) => t.id === playingVideo)?.description}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
