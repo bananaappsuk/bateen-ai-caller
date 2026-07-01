@@ -111,6 +111,8 @@ const SettingsPage = () => {
           email: parsed.email || user.email,
         }));
       }
+      const rawDnc = localStorage.getItem(DNC_KEY);
+      if (rawDnc) setDncList(JSON.parse(rawDnc));
     } catch {
       /* noop */
     }
