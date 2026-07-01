@@ -53,9 +53,16 @@ const PROFILE_KEY = "ai_account_profile";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = getDevUser();
-  const [activeTab, setActiveTab] = useState<Tab>("Profile");
+  const initialTab = (() => {
+    const q = searchParams.get("tab");
+    const match = tabs.find((t) => t.toLowerCase() === (q ?? "").toLowerCase());
+    return match ?? "Profile";
+  })();
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [profile, setProfile] = useState({ fullName: "", companyName: "" });
+  const [customAmount, setCustomAmount] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -71,6 +78,18 @@ const SettingsPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const q = searchParams.get("tab");
+    const match = tabs.find((t) => t.toLowerCase() === (q ?? "").toLowerCase());
+    if (match && match !== activeTab) setActiveTab(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const changeTab = (t: Tab) => {
+    setActiveTab(t);
+    setSearchParams({ tab: t }, { replace: true });
+  };
 
   if (!user) return null;
 
