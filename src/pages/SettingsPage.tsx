@@ -42,6 +42,7 @@ import {
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
 import { toast } from "@/hooks/use-toast";
+import { IntegrationCard, integrations } from "@/components/IntegrationCard";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
