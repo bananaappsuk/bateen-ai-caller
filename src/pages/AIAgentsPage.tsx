@@ -136,10 +136,8 @@ const AIAgentsPage = () => {
   const user = getDevUser();
   const [agents, setAgents] = useState<Agent[]>(loadAgents);
   const [linkOpen, setLinkOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
   const [viewing, setViewing] = useState<Agent | null>(null);
   const [linkForm, setLinkForm] = useState({ internalName: "", agentId: "", phoneNumber: "" });
-  const [createForm, setCreateForm] = useState(defaultCreateForm);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
