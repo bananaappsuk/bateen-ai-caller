@@ -82,6 +82,16 @@ const SettingsPage = () => {
       const raw = localStorage.getItem(PROFILE_KEY);
       if (raw) setProfile(JSON.parse(raw));
       else setProfile({ fullName: user.name, companyName: "" });
+
+      const rawNotifications = localStorage.getItem(NOTIFICATIONS_KEY);
+      if (rawNotifications) {
+        const parsed = JSON.parse(rawNotifications);
+        setNotifications((prev) => ({
+          ...prev,
+          ...parsed,
+          email: parsed.email || user.email,
+        }));
+      }
     } catch {
       /* noop */
     }
