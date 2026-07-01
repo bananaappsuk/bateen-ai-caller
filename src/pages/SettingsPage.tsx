@@ -35,6 +35,7 @@ import {
   AlertTriangle,
   Trash2,
   ShieldOff,
+  Info,
 } from "lucide-react";
 import {
   AlertDialog,
