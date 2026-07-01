@@ -52,6 +52,7 @@ const tabs = [
 type Tab = (typeof tabs)[number];
 
 const PROFILE_KEY = "ai_account_profile";
+const NOTIFICATIONS_KEY = "ai_notifications_settings";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
