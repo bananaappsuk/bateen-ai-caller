@@ -270,9 +270,17 @@ const LeadsPage = () => {
               >
                 <Settings className="h-4 w-4" />
               </button>
-              <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-100 shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
-                <RefreshCw className="h-4 w-4" />
-                Re-review Leads
+              <button
+                onClick={handleReReview}
+                disabled={isReviewing}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-100 shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isReviewing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                {isReviewing ? "Reviewing..." : "Re-review Leads"}
               </button>
               <button
                 onClick={handleExport}
