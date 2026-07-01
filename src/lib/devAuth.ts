@@ -22,11 +22,17 @@ export const DEV_USERS: DevUser[] = [
     allowedRoutes: [
       "/dashboard",
       "/ai-agents",
+      "/dashboard/agents",
       "/campaigns",
+      "/dashboard/campaigns",
       "/leads",
+      "/dashboard/leads",
       "/settings",
+      "/dashboard/settings",
       "/academy",
+      "/dashboard/academy",
       "/support",
+      "/dashboard/support",
     ],
   },
   {
