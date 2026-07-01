@@ -40,6 +40,8 @@ const App = () => (
           <Route path="/dashboard/leads" element={<LeadsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/dashboard/settings" element={<SettingsPage />} />
+          <Route path="/academy" element={<AcademyPage />} />
+          <Route path="/dashboard/academy" element={<AcademyPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
