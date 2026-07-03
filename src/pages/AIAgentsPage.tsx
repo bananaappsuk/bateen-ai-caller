@@ -605,6 +605,44 @@ const AIAgentsPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Live test-call conversation window */}
+      <Dialog
+        open={!!activeCallId}
+        onOpenChange={(o) => {
+          if (!o) stopActiveCall();
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Test call in progress</DialogTitle>
+            <DialogDescription>
+              Your browser is connected to the Retell agent. Speak into your microphone to test the conversation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center py-6">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#FF6FD8] flex items-center justify-center mb-4 animate-pulse">
+              <PhoneCall className="h-8 w-8 text-white" />
+            </div>
+            <p className="text-sm font-medium text-slate-900">
+              {agents.find((a) => a.id === activeAgentIdRef.current)?.internalName ?? "Agent"}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Call ID: {activeCallId}</p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                stopActiveCall();
+                toast("Test call ended.");
+              }}
+              className="w-full"
+            >
+              <PhoneOff className="h-4 w-4 mr-2" /> End call
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
