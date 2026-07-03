@@ -202,6 +202,92 @@ const AIAgentsPage = () => {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      try {
+        retellClientRef.current?.stopCall();
+      } catch {
+        // ignore
+      }
+      retellClientRef.current = null;
+    };
+  }, []);
+
+  const stopActiveCall = () => {
+    try {
+      retellClientRef.current?.stopCall();
+    } catch {
+      // ignore
+    }
+    retellClientRef.current = null;
+    activeAgentIdRef.current = null;
+    setActiveCallId(null);
+    setTestingId(null);
+  };
+
+  const handleTest = async (agent: Agent) => {
+    // If this agent's call is already active, treat click as "End test call".
+    if (activeAgentIdRef.current === agent.id) {
+      stopActiveCall();
+      toast("Test call ended.");
+      return;
+    }
+    // If a different call is active, stop it first.
+    if (retellClientRef.current) {
+      stopActiveCall();
+    }
+
+    const retellAgentId =
+      agent.retellAgentId ?? (agent.kind === "linked" ? agent.agentId : undefined);
+    if (!retellAgentId) {
+      toast.error("This agent has not been synced with Retell.");
+      return;
+    }
+
+    setTestingId(agent.id);
+    try {
+      const call = await retellService.createWebCall({
+        agent_id: retellAgentId,
+        agent_version: agent.retellAgentVersion ?? 0,
+      });
+
+      if (!call?.access_token) {
+        throw new RetellApiError("Retell did not return an access token.");
+      }
+
+      const client = new RetellWebClient();
+      retellClientRef.current = client;
+      activeAgentIdRef.current = agent.id;
+
+      client.on("call_started", () => {
+        setActiveCallId(call.call_id);
+        setTestingId(null);
+        toast.success(`Connected to ${agent.internalName}.`);
+      });
+      client.on("call_ended", () => {
+        stopActiveCall();
+      });
+      client.on("error", (err: unknown) => {
+        const message = err instanceof Error ? err.message : "Retell call error.";
+        toast.error(message);
+        stopActiveCall();
+      });
+
+      await client.startCall({ accessToken: call.access_token });
+    } catch (err) {
+      const message =
+        err instanceof RetellApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to start test call.";
+      toast.error(message);
+      setTestingId(null);
+      retellClientRef.current = null;
+      activeAgentIdRef.current = null;
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
       {/* Sidebar */}
