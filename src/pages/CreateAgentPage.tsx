@@ -66,10 +66,10 @@ const PRESETS = [
 ];
 
 const VOICES = [
-  { id: "mia", label: "Mia — Warm female (EN-US)" },
-  { id: "salma", label: "Salma — Professional female (EN-GB)" },
-  { id: "sarah", label: "Sarah — Friendly female (EN-AU)" },
-  { id: "james", label: "James — Confident male (EN-US)" },
+  { id: "mia", label: "Mia — Warm female (EN-US)", retellVoiceId: "11labs-Adrian" },
+  { id: "salma", label: "Salma — Professional female (EN-GB)", retellVoiceId: "11labs-Anthony" },
+  { id: "sarah", label: "Sarah — Friendly female (EN-AU)", retellVoiceId: "11labs-Lily" },
+  { id: "james", label: "James — Confident male (EN-US)", retellVoiceId: "11labs-Brian" },
 ];
 
 const AMBIENCES = [
