@@ -462,6 +462,25 @@ const AIAgentsPage = () => {
                         <Eye className="h-3.5 w-3.5" /> View
                       </button>
                       <button
+                        onClick={() => handleTest(agent)}
+                        disabled={testingId !== null && testingId !== agent.id}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-cyan-600 hover:bg-cyan-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {testingId === agent.id ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Connecting...
+                          </>
+                        ) : activeCallId && activeAgentIdRef.current === agent.id ? (
+                          <>
+                            <PhoneCall className="h-3.5 w-3.5" /> End Test
+                          </>
+                        ) : (
+                          <>
+                            <PhoneCall className="h-3.5 w-3.5" /> Test
+                          </>
+                        )}
+                      </button>
+                      <button
                         onClick={() => handleDelete(agent.id)}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
                       >
