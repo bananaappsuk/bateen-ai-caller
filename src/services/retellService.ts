@@ -233,6 +233,7 @@ export function listCalls(
 // ---------- Grouped default export for ergonomic imports ----------
 
 export const retellService = {
+  createLlm,
   createAgent,
   getAgent,
   updateAgent,
