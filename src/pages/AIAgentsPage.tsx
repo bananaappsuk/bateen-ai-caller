@@ -49,7 +49,6 @@ import {
   Trash2,
   PhoneCall,
   Loader2,
-  PhoneOff as PhoneOffIcon,
   LogOut,
   ChevronsUpDown,
   CreditCard,
