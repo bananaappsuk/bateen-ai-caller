@@ -472,6 +472,7 @@ const CreateAgentPage = () => {
             <Button
               type="submit"
               form="create-agent-form"
+              disabled={submitting}
               className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-95"
             >
               Create Agent
