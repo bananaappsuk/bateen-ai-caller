@@ -149,6 +149,10 @@ const AIAgentsPage = () => {
   const [linkOpen, setLinkOpen] = useState(false);
   const [viewing, setViewing] = useState<Agent | null>(null);
   const [linkForm, setLinkForm] = useState({ internalName: "", agentId: "", phoneNumber: "" });
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [activeCallId, setActiveCallId] = useState<string | null>(null);
+  const retellClientRef = useRef<RetellWebClient | null>(null);
+  const activeAgentIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
