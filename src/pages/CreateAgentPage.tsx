@@ -96,6 +96,7 @@ const CreateAgentPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
   const [form, setForm] = useState(defaultForm);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
@@ -112,9 +113,50 @@ const CreateAgentPage = () => {
 
   const handleCancel = () => navigate("/ai-agents");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.internalName.trim() || !form.prompt.trim()) return;
+    if (submitting) return;
+
+    setSubmitting(true);
+    const selectedVoice = VOICES.find((v) => v.id === form.voice);
+    const retellVoiceId = selectedVoice?.retellVoiceId ?? "11labs-Adrian";
+    const name = form.internalName.trim();
+    const prompt = form.prompt.trim();
+
+    let retellAgentId: string | undefined;
+    let retellAgentVersion: number | undefined;
+    let syncStatus: "synced" | "error" = "error";
+
+    try {
+      // 1. Create the Retell LLM that will power the agent.
+      const llm = await retellService.createLlm({
+        model: "gpt-4o-mini",
+        general_prompt: prompt,
+      });
+
+      // 2. Create the Retell agent bound to that LLM.
+      const agent = await retellService.createAgent({
+        agent_name: name,
+        voice_id: retellVoiceId,
+        language: "en-US",
+        response_engine: { type: "retell-llm", llm_id: llm.llm_id },
+      });
+
+      retellAgentId = agent.agent_id;
+      retellAgentVersion = typeof agent.version === "number" ? agent.version : 0;
+      syncStatus = "synced";
+      toast.success("Agent synced with Retell.");
+    } catch (err) {
+      const message =
+        err instanceof RetellApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to sync agent with Retell.";
+      toast.error(`Agent saved locally, but Retell sync failed: ${message}`);
+    }
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const existing = raw ? JSON.parse(raw) : [];
@@ -124,16 +166,23 @@ const CreateAgentPage = () => {
           id: crypto.randomUUID(),
           kind: "created",
           ...form,
-          internalName: form.internalName.trim(),
-          prompt: form.prompt.trim(),
+          internalName: name,
+          prompt,
+          retellAgentId,
+          retellAgentVersion,
+          retellVoiceId,
+          syncStatus,
+          lastSync: new Date().toISOString(),
         },
       ];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
       // ignore
     }
+    setSubmitting(false);
     navigate("/ai-agents");
   };
+
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
