@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { retellService, RetellApiError } from "@/services/retellService";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
   DropdownMenu,
@@ -64,10 +66,10 @@ const PRESETS = [
 ];
 
 const VOICES = [
-  { id: "mia", label: "Mia — Warm female (EN-US)" },
-  { id: "salma", label: "Salma — Professional female (EN-GB)" },
-  { id: "sarah", label: "Sarah — Friendly female (EN-AU)" },
-  { id: "james", label: "James — Confident male (EN-US)" },
+  { id: "mia", label: "Mia — Warm female (EN-US)", retellVoiceId: "11labs-Adrian" },
+  { id: "salma", label: "Salma — Professional female (EN-GB)", retellVoiceId: "11labs-Anthony" },
+  { id: "sarah", label: "Sarah — Friendly female (EN-AU)", retellVoiceId: "11labs-Lily" },
+  { id: "james", label: "James — Confident male (EN-US)", retellVoiceId: "11labs-Brian" },
 ];
 
 const AMBIENCES = [
@@ -94,6 +96,7 @@ const CreateAgentPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
   const [form, setForm] = useState(defaultForm);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
@@ -110,9 +113,50 @@ const CreateAgentPage = () => {
 
   const handleCancel = () => navigate("/ai-agents");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.internalName.trim() || !form.prompt.trim()) return;
+    if (submitting) return;
+
+    setSubmitting(true);
+    const selectedVoice = VOICES.find((v) => v.id === form.voice);
+    const retellVoiceId = selectedVoice?.retellVoiceId ?? "11labs-Adrian";
+    const name = form.internalName.trim();
+    const prompt = form.prompt.trim();
+
+    let retellAgentId: string | undefined;
+    let retellAgentVersion: number | undefined;
+    let syncStatus: "synced" | "error" = "error";
+
+    try {
+      // 1. Create the Retell LLM that will power the agent.
+      const llm = await retellService.createLlm({
+        model: "gpt-4o-mini",
+        general_prompt: prompt,
+      });
+
+      // 2. Create the Retell agent bound to that LLM.
+      const agent = await retellService.createAgent({
+        agent_name: name,
+        voice_id: retellVoiceId,
+        language: "en-US",
+        response_engine: { type: "retell-llm", llm_id: llm.llm_id },
+      });
+
+      retellAgentId = agent.agent_id;
+      retellAgentVersion = typeof agent.version === "number" ? agent.version : 0;
+      syncStatus = "synced";
+      toast.success("Agent synced with Retell.");
+    } catch (err) {
+      const message =
+        err instanceof RetellApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to sync agent with Retell.";
+      toast.error(`Agent saved locally, but Retell sync failed: ${message}`);
+    }
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const existing = raw ? JSON.parse(raw) : [];
@@ -122,16 +166,23 @@ const CreateAgentPage = () => {
           id: crypto.randomUUID(),
           kind: "created",
           ...form,
-          internalName: form.internalName.trim(),
-          prompt: form.prompt.trim(),
+          internalName: name,
+          prompt,
+          retellAgentId,
+          retellAgentVersion,
+          retellVoiceId,
+          syncStatus,
+          lastSync: new Date().toISOString(),
         },
       ];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
       // ignore
     }
+    setSubmitting(false);
     navigate("/ai-agents");
   };
+
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
@@ -421,6 +472,7 @@ const CreateAgentPage = () => {
             <Button
               type="submit"
               form="create-agent-form"
+              disabled={submitting}
               className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-95"
             >
               Create Agent

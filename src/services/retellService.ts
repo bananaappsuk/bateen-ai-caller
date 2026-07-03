@@ -119,6 +119,30 @@ async function callRetell<T>(req: ProxyBody): Promise<T> {
   return data as T;
 }
 
+// ---------- LLMs ----------
+
+export interface RetellLlm {
+  llm_id: string;
+  model?: string;
+  general_prompt?: string;
+  [key: string]: unknown;
+}
+
+export interface CreateLlmInput {
+  model?: string;
+  general_prompt: string;
+  general_tools?: unknown[];
+  [key: string]: unknown;
+}
+
+export function createLlm(input: CreateLlmInput): Promise<RetellLlm> {
+  return callRetell<RetellLlm>({
+    path: "/create-retell-llm",
+    method: "POST",
+    body: input,
+  });
+}
+
 // ---------- Agents ----------
 
 export function createAgent(input: CreateAgentInput): Promise<RetellAgent> {
@@ -209,6 +233,7 @@ export function listCalls(
 // ---------- Grouped default export for ergonomic imports ----------
 
 export const retellService = {
+  createLlm,
   createAgent,
   getAgent,
   updateAgent,
