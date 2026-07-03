@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { RetellWebClient } from "retell-client-js-sdk";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
+import { retellService, RetellApiError } from "@/services/retellService";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -44,6 +47,8 @@ import {
   Plus,
   Eye,
   Trash2,
+  PhoneCall,
+  Loader2,
   LogOut,
   ChevronsUpDown,
   CreditCard,
@@ -84,6 +89,12 @@ interface Agent {
   endCallAutomatically?: boolean;
   bookCalSlot?: boolean;
   transferToHuman?: boolean;
+  // Retell linkage (internal, not shown in UI unless a placeholder already exists)
+  retellAgentId?: string;
+  retellAgentVersion?: number;
+  retellVoiceId?: string;
+  lastSync?: string;
+  syncStatus?: "synced" | "pending" | "error";
 }
 
 const STORAGE_KEY = "linked_ai_agents_list";
@@ -138,6 +149,10 @@ const AIAgentsPage = () => {
   const [linkOpen, setLinkOpen] = useState(false);
   const [viewing, setViewing] = useState<Agent | null>(null);
   const [linkForm, setLinkForm] = useState({ internalName: "", agentId: "", phoneNumber: "" });
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [activeCallId, setActiveCallId] = useState<string | null>(null);
+  const retellClientRef = useRef<RetellWebClient | null>(null);
+  const activeAgentIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
@@ -184,6 +199,92 @@ const AIAgentsPage = () => {
   const handleDelete = (id: string) => {
     if (confirm("Delete this agent?")) {
       setAgents((prev) => prev.filter((a) => a.id !== id));
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      try {
+        retellClientRef.current?.stopCall();
+      } catch {
+        // ignore
+      }
+      retellClientRef.current = null;
+    };
+  }, []);
+
+  const stopActiveCall = () => {
+    try {
+      retellClientRef.current?.stopCall();
+    } catch {
+      // ignore
+    }
+    retellClientRef.current = null;
+    activeAgentIdRef.current = null;
+    setActiveCallId(null);
+    setTestingId(null);
+  };
+
+  const handleTest = async (agent: Agent) => {
+    // If this agent's call is already active, treat click as "End test call".
+    if (activeAgentIdRef.current === agent.id) {
+      stopActiveCall();
+      toast("Test call ended.");
+      return;
+    }
+    // If a different call is active, stop it first.
+    if (retellClientRef.current) {
+      stopActiveCall();
+    }
+
+    const retellAgentId =
+      agent.retellAgentId ?? (agent.kind === "linked" ? agent.agentId : undefined);
+    if (!retellAgentId) {
+      toast.error("This agent has not been synced with Retell.");
+      return;
+    }
+
+    setTestingId(agent.id);
+    try {
+      const call = await retellService.createWebCall({
+        agent_id: retellAgentId,
+        agent_version: agent.retellAgentVersion ?? 0,
+      });
+
+      if (!call?.access_token) {
+        throw new RetellApiError("Retell did not return an access token.");
+      }
+
+      const client = new RetellWebClient();
+      retellClientRef.current = client;
+      activeAgentIdRef.current = agent.id;
+
+      client.on("call_started", () => {
+        setActiveCallId(call.call_id);
+        setTestingId(null);
+        toast.success(`Connected to ${agent.internalName}.`);
+      });
+      client.on("call_ended", () => {
+        stopActiveCall();
+      });
+      client.on("error", (err: unknown) => {
+        const message = err instanceof Error ? err.message : "Retell call error.";
+        toast.error(message);
+        stopActiveCall();
+      });
+
+      await client.startCall({ accessToken: call.access_token });
+    } catch (err) {
+      const message =
+        err instanceof RetellApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to start test call.";
+      toast.error(message);
+      setTestingId(null);
+      retellClientRef.current = null;
+      activeAgentIdRef.current = null;
     }
   };
 
@@ -359,6 +460,25 @@ const AIAgentsPage = () => {
                         className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                       >
                         <Eye className="h-3.5 w-3.5" /> View
+                      </button>
+                      <button
+                        onClick={() => handleTest(agent)}
+                        disabled={testingId !== null && testingId !== agent.id}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-cyan-600 hover:bg-cyan-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {testingId === agent.id ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Connecting...
+                          </>
+                        ) : activeCallId && activeAgentIdRef.current === agent.id ? (
+                          <>
+                            <PhoneCall className="h-3.5 w-3.5" /> End Test
+                          </>
+                        ) : (
+                          <>
+                            <PhoneCall className="h-3.5 w-3.5" /> Test
+                          </>
+                        )}
                       </button>
                       <button
                         onClick={() => handleDelete(agent.id)}
