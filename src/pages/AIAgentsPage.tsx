@@ -89,6 +89,12 @@ interface Agent {
   endCallAutomatically?: boolean;
   bookCalSlot?: boolean;
   transferToHuman?: boolean;
+  // Retell linkage (internal, not shown in UI unless a placeholder already exists)
+  retellAgentId?: string;
+  retellAgentVersion?: number;
+  retellVoiceId?: string;
+  lastSync?: string;
+  syncStatus?: "synced" | "pending" | "error";
 }
 
 const STORAGE_KEY = "linked_ai_agents_list";
