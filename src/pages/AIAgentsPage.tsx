@@ -233,10 +233,6 @@ const AIAgentsPage = () => {
       toast("Test call ended.");
       return;
     }
-    // If a different call is active, stop it first.
-    if (retellClientRef.current) {
-      stopActiveCall();
-    }
 
     const retellAgentId =
       agent.retellAgentId ?? (agent.kind === "linked" ? agent.agentId : undefined);
@@ -245,47 +241,103 @@ const AIAgentsPage = () => {
       return;
     }
 
+    const fromNumber = agent.phoneNumber?.trim();
+    if (!fromNumber) {
+      toast.error("This agent has no phone number configured. Add one to place a test call.");
+      return;
+    }
+
+    // Ask for the destination number without adding new UI.
+    const toNumberRaw = window.prompt(
+      "Enter the phone number to call for this test (E.164 format, e.g. +14155551234):",
+      "",
+    );
+    if (!toNumberRaw) return;
+    const toNumber = toNumberRaw.trim();
+    if (!/^\+[1-9]\d{6,14}$/.test(toNumber)) {
+      toast.error("Invalid phone number. Use E.164 format, e.g. +14155551234.");
+      return;
+    }
+
     setTestingId(agent.id);
+    const loadingId = toast.loading(`Placing test call to ${toNumber}…`);
+
+    // Pre-insert a pending call row so we always have a record, even on failure.
+    let localCallRowId: string | null = null;
     try {
-      const call = await retellService.createWebCall({
-        agent_id: retellAgentId,
-        agent_version: agent.retellAgentVersion ?? 0,
+      const { data: pending } = await supabase
+        .from("calls" as never)
+        .insert({
+          agent_id: retellAgentId,
+          agent_name: agent.internalName,
+          from_number: fromNumber,
+          to_number: toNumber,
+          direction: "outbound",
+          call_type: "phone_call",
+          status: "initiating",
+        } as never)
+        .select("id")
+        .single();
+      localCallRowId = (pending as { id?: string } | null)?.id ?? null;
+    } catch {
+      // Non-fatal — proceed with the Retell call even if the local log failed.
+    }
+
+    try {
+      const call = await retellService.createPhoneCall({
+        from_number: fromNumber,
+        to_number: toNumber,
+        override_agent_id: retellAgentId,
       });
 
-      if (!call?.access_token) {
-        throw new RetellApiError("Retell did not return an access token.");
+      if (!call?.call_id) {
+        throw new RetellApiError("Retell did not return a call_id.");
       }
 
-      const client = new RetellWebClient();
-      retellClientRef.current = client;
+      // Persist the returned call_id + status.
+      if (localCallRowId) {
+        await supabase
+          .from("calls" as never)
+          .update({
+            retell_call_id: call.call_id,
+            status: call.call_status ?? "registered",
+            metadata: call as unknown as Record<string, unknown>,
+          } as never)
+          .eq("id", localCallRowId);
+      } else {
+        await supabase.from("calls" as never).insert({
+          retell_call_id: call.call_id,
+          agent_id: retellAgentId,
+          agent_name: agent.internalName,
+          from_number: fromNumber,
+          to_number: toNumber,
+          direction: "outbound",
+          call_type: "phone_call",
+          status: call.call_status ?? "registered",
+          metadata: call as unknown as Record<string, unknown>,
+        } as never);
+      }
+
       activeAgentIdRef.current = agent.id;
-
-      client.on("call_started", () => {
-        setActiveCallId(call.call_id);
-        setTestingId(null);
-        toast.success(`Connected to ${agent.internalName}.`);
-      });
-      client.on("call_ended", () => {
-        stopActiveCall();
-      });
-      client.on("error", (err: unknown) => {
-        const message = err instanceof Error ? err.message : "Retell call error.";
-        toast.error(message);
-        stopActiveCall();
-      });
-
-      await client.startCall({ accessToken: call.access_token });
+      setActiveCallId(call.call_id);
+      toast.success(`Call placed to ${toNumber}. Call ID: ${call.call_id}`, { id: loadingId });
     } catch (err) {
       const message =
         err instanceof RetellApiError
           ? err.message
           : err instanceof Error
             ? err.message
-            : "Failed to start test call.";
-      toast.error(message);
-      setTestingId(null);
-      retellClientRef.current = null;
+            : "Failed to place test call.";
+      toast.error(message, { id: loadingId });
+      if (localCallRowId) {
+        await supabase
+          .from("calls" as never)
+          .update({ status: "failed", error_message: message } as never)
+          .eq("id", localCallRowId);
+      }
       activeAgentIdRef.current = null;
+    } finally {
+      setTestingId(null);
     }
   };
 
