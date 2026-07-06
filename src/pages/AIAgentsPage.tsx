@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { RetellWebClient } from "retell-client-js-sdk";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import { retellService, RetellApiError } from "@/services/retellService";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
