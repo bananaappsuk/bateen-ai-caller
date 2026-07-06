@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { retellService, RetellApiError } from "@/services/retellService";
+import { supabase } from "@/integrations/supabase/client";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
   DropdownMenu,
@@ -126,20 +127,25 @@ const CreateAgentPage = () => {
 
     let retellAgentId: string | undefined;
     let retellAgentVersion: number | undefined;
+    let retellLlmId: string | undefined;
+    const llmModel = "gpt-4o-mini";
+    const language = "en-US";
     let syncStatus: "synced" | "error" = "error";
+    let errorMessage: string | undefined;
 
     try {
       // 1. Create the Retell LLM that will power the agent.
       const llm = await retellService.createLlm({
-        model: "gpt-4o-mini",
+        model: llmModel,
         general_prompt: prompt,
       });
+      retellLlmId = llm.llm_id;
 
       // 2. Create the Retell agent bound to that LLM.
       const agent = await retellService.createAgent({
         agent_name: name,
         voice_id: retellVoiceId,
-        language: "en-US",
+        language,
         response_engine: { type: "retell-llm", llm_id: llm.llm_id },
       });
 
@@ -148,13 +154,49 @@ const CreateAgentPage = () => {
       syncStatus = "synced";
       toast.success("Agent synced with Retell.");
     } catch (err) {
-      const message =
+      errorMessage =
         err instanceof RetellApiError
           ? err.message
           : err instanceof Error
             ? err.message
             : "Failed to sync agent with Retell.";
-      toast.error(`Agent saved locally, but Retell sync failed: ${message}`);
+      toast.error(`Agent saved locally, but Retell sync failed: ${errorMessage}`);
+    }
+
+    // Persist to database (agents table)
+    let dbAgentId: string | undefined;
+    try {
+      const { data, error } = await supabase
+        .from("agents")
+        .insert({
+          retell_agent_id: retellAgentId ?? null,
+          retell_agent_version: retellAgentVersion ?? null,
+          retell_llm_id: retellLlmId ?? null,
+          name,
+          voice: form.voice,
+          retell_voice_id: retellVoiceId,
+          prompt,
+          language,
+          llm: llmModel,
+          status: syncStatus === "synced" ? "active" : "error",
+          error_message: errorMessage ?? null,
+          metadata: {
+            preset: form.preset,
+            ambience: form.ambience,
+            responseSpeed: form.responseSpeed,
+            hangUpOnVoicemail: form.hangUpOnVoicemail,
+            endCallAutomatically: form.endCallAutomatically,
+            bookCalSlot: form.bookCalSlot,
+            transferToHuman: form.transferToHuman,
+          },
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      dbAgentId = data?.id;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save agent.";
+      toast.error(`Could not save agent to database: ${msg}`);
     }
 
     try {
@@ -163,14 +205,17 @@ const CreateAgentPage = () => {
       const next = [
         ...existing,
         {
-          id: crypto.randomUUID(),
+          id: dbAgentId ?? crypto.randomUUID(),
           kind: "created",
           ...form,
           internalName: name,
           prompt,
           retellAgentId,
           retellAgentVersion,
+          retellLlmId,
           retellVoiceId,
+          language,
+          llm: llmModel,
           syncStatus,
           lastSync: new Date().toISOString(),
         },
