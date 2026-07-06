@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      agents: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          language: string
+          llm: string | null
+          metadata: Json | null
+          name: string
+          prompt: string | null
+          retell_agent_id: string | null
+          retell_agent_version: number | null
+          retell_llm_id: string | null
+          retell_voice_id: string | null
+          status: string
+          updated_at: string
+          voice: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          language?: string
+          llm?: string | null
+          metadata?: Json | null
+          name: string
+          prompt?: string | null
+          retell_agent_id?: string | null
+          retell_agent_version?: number | null
+          retell_llm_id?: string | null
+          retell_voice_id?: string | null
+          status?: string
+          updated_at?: string
+          voice?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          language?: string
+          llm?: string | null
+          metadata?: Json | null
+          name?: string
+          prompt?: string | null
+          retell_agent_id?: string | null
+          retell_agent_version?: number | null
+          retell_llm_id?: string | null
+          retell_voice_id?: string | null
+          status?: string
+          updated_at?: string
+          voice?: string | null
+        }
+        Relationships: []
+      }
       calls: {
         Row: {
           agent_id: string | null
