@@ -14,54 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      calls: {
-        Row: {
-          agent_id: string | null
-          agent_name: string | null
-          call_type: string
-          created_at: string
-          direction: string
-          error_message: string | null
-          from_number: string | null
-          id: string
-          metadata: Json | null
-          retell_call_id: string | null
-          status: string
-          to_number: string | null
-          updated_at: string
-        }
-        Insert: {
-          agent_id?: string | null
-          agent_name?: string | null
-          call_type?: string
-          created_at?: string
-          direction?: string
-          error_message?: string | null
-          from_number?: string | null
-          id?: string
-          metadata?: Json | null
-          retell_call_id?: string | null
-          status?: string
-          to_number?: string | null
-          updated_at?: string
-        }
-        Update: {
-          agent_id?: string | null
-          agent_name?: string | null
-          call_type?: string
-          created_at?: string
-          direction?: string
-          error_message?: string | null
-          from_number?: string | null
-          id?: string
-          metadata?: Json | null
-          retell_call_id?: string | null
-          status?: string
-          to_number?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       contact_submissions: {
         Row: {
           company: string | null
