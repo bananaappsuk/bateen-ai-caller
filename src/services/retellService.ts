@@ -272,6 +272,7 @@ export const retellService = {
   listAgents,
   createWebCall,
   createPhoneCall,
+  createBatchCall,
   getCall,
   listCalls,
 };
