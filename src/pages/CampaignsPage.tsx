@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { retellService } from "@/services/retellService";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
   DropdownMenu,
@@ -106,6 +107,59 @@ const CampaignsPage = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(campaigns));
   }, [campaigns]);
+
+  // Populate Campaign History from Retell /list-batch-call.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const batches = await retellService.listBatchCalls();
+        if (cancelled || !Array.isArray(batches)) return;
+        const mapStatus = (s?: string): Campaign["status"] => {
+          const v = (s ?? "").toLowerCase();
+          if (v.includes("complete") || v.includes("finish")) return "Completed";
+          if (v.includes("pause")) return "Paused";
+          if (v.includes("progress") || v.includes("in_progress") || v.includes("active") || v.includes("register") || v.includes("scheduled"))
+            return "Active";
+          return "Draft";
+        };
+        setCampaigns((prev) => {
+          const byBatchId = new Map(
+            prev
+              .filter((c) => (c as Campaign & { batchCallId?: string }).batchCallId)
+              .map((c) => [(c as Campaign & { batchCallId?: string }).batchCallId!, c]),
+          );
+          const merged: Campaign[] = [...prev];
+          for (const b of batches) {
+            if (!b?.batch_call_id) continue;
+            const existing = byBatchId.get(b.batch_call_id);
+            const nextEntry: Campaign & { batchCallId?: string } = {
+              id: existing?.id ?? crypto.randomUUID(),
+              name: b.name || existing?.name || `Batch ${b.batch_call_id.slice(0, 8)}`,
+              agent: existing?.agent || b.from_number || "",
+              status: mapStatus(b.status),
+              leads: b.total_task_count ?? existing?.leads ?? 0,
+              calls: existing?.calls ?? 0,
+              description: existing?.description ?? "",
+              batchCallId: b.batch_call_id,
+            };
+            if (existing) {
+              const idx = merged.findIndex((c) => c.id === existing.id);
+              if (idx !== -1) merged[idx] = nextEntry;
+            } else {
+              merged.push(nextEntry);
+            }
+          }
+          return merged;
+        });
+      } catch {
+        // silent — leave local list intact
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!user) return null;
 

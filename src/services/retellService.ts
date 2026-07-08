@@ -236,6 +236,13 @@ export function createBatchCall(input: CreateBatchCallInput): Promise<BatchCall>
   });
 }
 
+export function listBatchCalls(): Promise<BatchCall[]> {
+  return callRetell<BatchCall[]>({
+    path: "/list-batch-call",
+    method: "GET",
+  });
+}
+
 export function createPhoneCall(input: CreatePhoneCallInput): Promise<RetellCall> {
   return callRetell<RetellCall>({
     path: "/create-phone-call",
@@ -273,6 +280,7 @@ export const retellService = {
   createWebCall,
   createPhoneCall,
   createBatchCall,
+  listBatchCalls,
   getCall,
   listCalls,
 };
