@@ -241,26 +241,8 @@ const AIAgentsPage = () => {
       return;
     }
 
-    const fromNumber = agent.phoneNumber?.trim();
-    if (!fromNumber) {
-      toast.error("This agent has no phone number configured. Add one to place a test call.");
-      return;
-    }
-
-    // Ask for the destination number without adding new UI.
-    const toNumberRaw = window.prompt(
-      "Enter the phone number to call for this test (E.164 format, e.g. +14155551234):",
-      "",
-    );
-    if (!toNumberRaw) return;
-    const toNumber = toNumberRaw.trim();
-    if (!/^\+[1-9]\d{6,14}$/.test(toNumber)) {
-      toast.error("Invalid phone number. Use E.164 format, e.g. +14155551234.");
-      return;
-    }
-
     setTestingId(agent.id);
-    const loadingId = toast.loading(`Placing test call to ${toNumber}…`);
+    const loadingId = toast.loading("Starting test call…");
 
     // Pre-insert a pending call row so we always have a record, even on failure.
     let localCallRowId: string | null = null;
@@ -270,10 +252,8 @@ const AIAgentsPage = () => {
         .insert({
           agent_id: retellAgentId,
           agent_name: agent.internalName,
-          from_number: fromNumber,
-          to_number: toNumber,
-          direction: "outbound",
-          call_type: "phone_call",
+          direction: "inbound",
+          call_type: "web_call",
           status: "initiating",
         } as never)
         .select("id")
@@ -284,10 +264,8 @@ const AIAgentsPage = () => {
     }
 
     try {
-      const call = await retellService.createPhoneCall({
-        from_number: fromNumber,
-        to_number: toNumber,
-        override_agent_id: retellAgentId,
+      const call = await retellService.createWebCall({
+        agent_id: retellAgentId,
       });
 
       if (!call?.call_id) {
@@ -309,10 +287,8 @@ const AIAgentsPage = () => {
           retell_call_id: call.call_id,
           agent_id: retellAgentId,
           agent_name: agent.internalName,
-          from_number: fromNumber,
-          to_number: toNumber,
-          direction: "outbound",
-          call_type: "phone_call",
+          direction: "inbound",
+          call_type: "web_call",
           status: call.call_status ?? "registered",
           metadata: call as unknown as Record<string, unknown>,
         } as never);
@@ -320,14 +296,14 @@ const AIAgentsPage = () => {
 
       activeAgentIdRef.current = agent.id;
       setActiveCallId(call.call_id);
-      toast.success(`Call placed to ${toNumber}. Call ID: ${call.call_id}`, { id: loadingId });
+      toast.success(`Test call started. Call ID: ${call.call_id}`, { id: loadingId });
     } catch (err) {
       const message =
         err instanceof RetellApiError
           ? err.message
           : err instanceof Error
             ? err.message
-            : "Failed to place test call.";
+            : "Failed to start test call.";
       toast.error(message, { id: loadingId });
       if (localCallRowId) {
         await supabase
