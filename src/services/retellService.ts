@@ -280,6 +280,7 @@ export const retellService = {
   createWebCall,
   createPhoneCall,
   createBatchCall,
+  listBatchCalls,
   getCall,
   listCalls,
 };
