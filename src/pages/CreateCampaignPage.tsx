@@ -365,11 +365,14 @@ const CreateCampaignPage = () => {
                     <SelectValue placeholder="Choose an agent" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableAgents.map((a) => (
-                      <SelectItem key={a.id} value={a.label}>
-                        {a.label}
-                      </SelectItem>
-                    ))}
+                    {availableAgents.map((a) => {
+                      const label = a.internalName || a.agentId || "Unnamed agent";
+                      return (
+                        <SelectItem key={a.id} value={label}>
+                          {label}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               ) : (
