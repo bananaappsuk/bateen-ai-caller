@@ -3,7 +3,16 @@
 // RETELL_API_KEY never leaves the server.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
-const RETELL_BASE_URL = Deno.env.get("RETELL_API_BASE_URL") ?? "https://api.retellai.com/v2";
+const DEFAULT_RETELL_BASE_URL = "https://api.retellai.com/v2";
+
+function normalizeRetellBaseUrl(url: string) {
+  const trimmed = url.trim().replace(/\/+$/, "");
+  return trimmed.endsWith("/v2") ? trimmed : `${trimmed}/v2`;
+}
+
+const RETELL_BASE_URL = normalizeRetellBaseUrl(
+  Deno.env.get("RETELL_API_BASE_URL") || DEFAULT_RETELL_BASE_URL,
+);
 
 type ProxyRequest = {
   path: string;               // e.g. "/create-agent", "/create-web-call", "/get-agent/agent_xxx"
@@ -44,7 +53,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "`path` must be a string starting with '/'." }, 400);
   }
 
-  const upstreamUrl = new URL(RETELL_BASE_URL.replace(/\/+$/, "") + path);
+  const upstreamPath = path.replace(/^\/v2(?=\/|$)/, "");
+  const upstreamUrl = new URL(RETELL_BASE_URL + upstreamPath);
   if (query && typeof query === "object") {
     for (const [k, v] of Object.entries(query)) {
       if (v !== undefined && v !== null) upstreamUrl.searchParams.set(k, String(v));
