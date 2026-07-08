@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { retellService, RetellApiError } from "@/services/retellService";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
   DropdownMenu,
@@ -79,26 +81,54 @@ const defaultForm = {
   csvLeadCount: 0,
 };
 
+type StoredAgent = {
+  id: string;
+  internalName?: string;
+  agentId?: string;
+  retellAgentId?: string;
+  phoneNumber?: string;
+};
+
+// Very small CSV parser: header row + comma-separated fields (no quoted-comma support).
+// Returns { tasks: [{ to_number, retell_llm_dynamic_variables }] } for Retell batch calls.
+function parseCsvTasks(csvText: string): { to_number: string; retell_llm_dynamic_variables: Record<string, string> }[] {
+  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) return [];
+  const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  const phoneIdx = header.findIndex((h) => h === "phone" || h === "to_number" || h === "number");
+  if (phoneIdx === -1) return [];
+  const tasks: { to_number: string; retell_llm_dynamic_variables: Record<string, string> }[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(",").map((c) => c.trim());
+    const to = cols[phoneIdx];
+    if (!to || !/^\+[1-9]\d{6,14}$/.test(to)) continue;
+    const vars: Record<string, string> = {};
+    header.forEach((h, idx) => {
+      if (idx === phoneIdx) return;
+      if (cols[idx]) vars[h] = cols[idx];
+    });
+    tasks.push({ to_number: to, retell_llm_dynamic_variables: vars });
+  }
+  return tasks;
+}
+
 const CreateCampaignPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState(defaultForm);
+  const [csvText, setCsvText] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
   }, [user, navigate]);
 
-  const availableAgents = useMemo<{ id: string; label: string }[]>(() => {
+  const availableAgents = useMemo<StoredAgent[]>(() => {
     try {
       const raw = localStorage.getItem(AGENTS_KEY);
       const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list)
-        ? list.map((a: any) => ({
-            id: a.id,
-            label: a.internalName || a.agentId || "Unnamed agent",
-          }))
-        : [];
+      return Array.isArray(list) ? (list as StoredAgent[]) : [];
     } catch {
       return [];
     }
@@ -121,6 +151,7 @@ const CreateCampaignPage = () => {
     const text = await file.text();
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
     const rows = Math.max(0, lines.length - 1); // exclude header
+    setCsvText(text);
     setForm((prev) => ({ ...prev, csvFileName: file.name, csvLeadCount: rows }));
   };
 
@@ -136,9 +167,56 @@ const CreateCampaignPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || submitting) return;
+
+    setSubmitting(true);
+
+    // Resolve the selected agent (form.agent stores the label).
+    const selectedAgent = availableAgents.find(
+      (a) => (a.internalName || a.agentId) === form.agent,
+    );
+    const fromNumber = selectedAgent?.phoneNumber?.trim();
+    const retellAgentId = selectedAgent?.retellAgentId;
+
+    let batchCallId: string | undefined;
+    let batchStatus: string | undefined;
+    let campaignStatus: "Draft" | "Active" = "Draft";
+    let errorMessage: string | undefined;
+
+    const tasks = csvText ? parseCsvTasks(csvText) : [];
+
+    if (tasks.length === 0) {
+      errorMessage = "No valid phone numbers found in CSV — campaign saved as Draft.";
+      toast.error(errorMessage);
+    } else if (!fromNumber) {
+      errorMessage = "Selected agent has no phone number — campaign saved as Draft.";
+      toast.error(errorMessage);
+    } else {
+      const loadingId = toast.loading(`Creating batch call for ${tasks.length} leads…`);
+      try {
+        const batch = await retellService.createBatchCall({
+          from_number: fromNumber,
+          name: form.name.trim(),
+          tasks,
+          ...(retellAgentId ? { override_agent_id: retellAgentId } : {}),
+        });
+        batchCallId = batch.batch_call_id;
+        batchStatus = batch.status;
+        campaignStatus = "Active";
+        toast.success(`Batch call created (${batchCallId}).`, { id: loadingId });
+      } catch (err) {
+        errorMessage =
+          err instanceof RetellApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to create batch call.";
+        toast.error(errorMessage, { id: loadingId });
+      }
+    }
+
     try {
       const raw = localStorage.getItem(CAMPAIGNS_KEY);
       const existing = raw ? JSON.parse(raw) : [];
@@ -148,7 +226,7 @@ const CreateCampaignPage = () => {
           id: crypto.randomUUID(),
           name: form.name.trim(),
           agent: form.agent,
-          status: "Draft",
+          status: campaignStatus,
           leads: form.csvLeadCount,
           calls: 0,
           description: form.qualificationCriteria,
@@ -158,12 +236,16 @@ const CreateCampaignPage = () => {
           notInterestedDescription: form.notInterestedDescription,
           country: form.country,
           csvFileName: form.csvFileName,
+          batchCallId,
+          batchStatus,
+          errorMessage,
         },
       ];
       localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(next));
     } catch {
       // ignore
     }
+    setSubmitting(false);
     navigate("/dashboard/campaigns");
   };
 
@@ -283,11 +365,14 @@ const CreateCampaignPage = () => {
                     <SelectValue placeholder="Choose an agent" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableAgents.map((a) => (
-                      <SelectItem key={a.id} value={a.label}>
-                        {a.label}
-                      </SelectItem>
-                    ))}
+                    {availableAgents.map((a) => {
+                      const label = a.internalName || a.agentId || "Unnamed agent";
+                      return (
+                        <SelectItem key={a.id} value={label}>
+                          {label}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               ) : (

@@ -205,6 +205,37 @@ export interface CreatePhoneCallInput {
   retell_llm_dynamic_variables?: Record<string, unknown>;
 }
 
+export interface BatchCallTask {
+  to_number: string;
+  retell_llm_dynamic_variables?: Record<string, unknown>;
+}
+
+export interface CreateBatchCallInput {
+  from_number: string;
+  tasks: BatchCallTask[];
+  name?: string;
+  trigger_timestamp?: number;
+  override_agent_id?: RetellAgentId;
+}
+
+export interface BatchCall {
+  batch_call_id: string;
+  name?: string;
+  from_number?: string;
+  scheduled_timestamp?: number;
+  total_task_count?: number;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export function createBatchCall(input: CreateBatchCallInput): Promise<BatchCall> {
+  return callRetell<BatchCall>({
+    path: "/create-batch-call",
+    method: "POST",
+    body: input,
+  });
+}
+
 export function createPhoneCall(input: CreatePhoneCallInput): Promise<RetellCall> {
   return callRetell<RetellCall>({
     path: "/create-phone-call",
@@ -241,6 +272,7 @@ export const retellService = {
   listAgents,
   createWebCall,
   createPhoneCall,
+  createBatchCall,
   getCall,
   listCalls,
 };
