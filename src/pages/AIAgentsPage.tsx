@@ -294,6 +294,54 @@ const AIAgentsPage = () => {
         } as never);
       }
 
+      // Request mic permission up front so startCall doesn't silently fail.
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Release the probe stream; the SDK acquires its own.
+        stream.getTracks().forEach((t) => t.stop());
+      } catch {
+        throw new Error("Microphone permission is required for a test call.");
+      }
+
+      // Instantiate the Retell Web SDK and join the call.
+      const client = new RetellWebClient();
+      retellClientRef.current = client;
+
+      client.on("call_started", () => {
+        toast.success("Call connected.");
+      });
+      client.on("call_ended", () => {
+        toast("Call ended.");
+        if (localCallRowId) {
+          supabase
+            .from("calls" as never)
+            .update({ status: "ended" } as never)
+            .eq("id", localCallRowId);
+        }
+        stopActiveCall();
+      });
+      client.on("error", (e: unknown) => {
+        const msg = e instanceof Error ? e.message : "Call error.";
+        toast.error(msg);
+        try {
+          client.stopCall();
+        } catch {
+          // ignore
+        }
+        stopActiveCall();
+      });
+      // `update` fires with transcript/state deltas when supported by the SDK.
+      // Guard because older SDK versions may not emit it.
+      try {
+        client.on("update", () => {
+          // No-op: hook available for future transcript UI.
+        });
+      } catch {
+        // ignore if event unsupported
+      }
+
+      await client.startCall({ accessToken: call.access_token });
+
       activeAgentIdRef.current = agent.id;
       setActiveCallId(call.call_id);
       toast.success(`Test call started. Call ID: ${call.call_id}`, { id: loadingId });
