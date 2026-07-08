@@ -3,7 +3,7 @@
 // RETELL_API_KEY never leaves the server.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
-const RETELL_BASE_URL = Deno.env.get("RETELL_API_BASE_URL") ?? "https://api.retellai.com";
+const RETELL_BASE_URL = Deno.env.get("RETELL_API_BASE_URL") ?? "https://api.retellai.com/v2";
 
 type ProxyRequest = {
   path: string;               // e.g. "/create-agent", "/create-web-call", "/get-agent/agent_xxx"
