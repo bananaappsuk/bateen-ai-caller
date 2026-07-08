@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { retellService } from "@/services/retellService";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
   DropdownMenu,
