@@ -3,11 +3,19 @@
 // RETELL_API_KEY never leaves the server.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
-const DEFAULT_RETELL_BASE_URL = "https://api.retellai.com/v2";
+const DEFAULT_RETELL_BASE_URL = "https://api.retellai.com";
+
+const V2_ENDPOINTS = new Set([
+  "/create-web-call",
+  "/create-phone-call",
+  "/get-call",
+  "/list-calls",
+  "/list-agents",
+]);
 
 function normalizeRetellBaseUrl(url: string) {
   const trimmed = url.trim().replace(/\/+$/, "");
-  return trimmed.endsWith("/v2") ? trimmed : `${trimmed}/v2`;
+  return trimmed.replace(/\/v2$/, "");
 }
 
 const RETELL_BASE_URL = normalizeRetellBaseUrl(
@@ -53,7 +61,12 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "`path` must be a string starting with '/'." }, 400);
   }
 
-  const upstreamPath = path.replace(/^\/v2(?=\/|$)/, "");
+  const normalizedPath = path.replace(/^\/v2(?=\/|$)/, "");
+  const upstreamPath = [...V2_ENDPOINTS].some((endpoint) =>
+      normalizedPath === endpoint || normalizedPath.startsWith(`${endpoint}/`)
+    )
+    ? `/v2${normalizedPath}`
+    : normalizedPath;
   const upstreamUrl = new URL(RETELL_BASE_URL + upstreamPath);
   if (query && typeof query === "object") {
     for (const [k, v] of Object.entries(query)) {
