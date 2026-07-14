@@ -61,12 +61,16 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "`path` must be a string starting with '/'." }, 400);
   }
 
-  const normalizedPath = path.replace(/^\/v2(?=\/|$)/, "");
-  const upstreamPath = [...V2_ENDPOINTS].some((endpoint) =>
-      normalizedPath === endpoint || normalizedPath.startsWith(`${endpoint}/`)
-    )
-    ? `/v2${normalizedPath}`
-    : normalizedPath;
+  // Honor an explicit version prefix (/v1, /v2, /v3, …) if the caller provided
+  // one; otherwise auto-prefix /v2 for the legacy endpoint set (back-compat).
+  const hasVersion = /^\/v[0-9]+(?=\/|$)/.test(path);
+  const upstreamPath = hasVersion
+    ? path
+    : [...V2_ENDPOINTS].some(
+          (endpoint) => path === endpoint || path.startsWith(`${endpoint}/`),
+        )
+      ? `/v2${path}`
+      : path;
   const upstreamUrl = new URL(RETELL_BASE_URL + upstreamPath);
   if (query && typeof query === "object") {
     for (const [k, v] of Object.entries(query)) {

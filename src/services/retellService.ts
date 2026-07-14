@@ -178,11 +178,14 @@ export function deleteAgent(agentId: RetellAgentId): Promise<void> {
   });
 }
 
-export function listAgents(): Promise<RetellAgent[]> {
-  return callRetell<RetellAgent[]>({
+export async function listAgents(): Promise<RetellAgent[]> {
+  // Retell's list-agents is POST /v2/list-agents and returns { items: [...] }.
+  const res = await callRetell<{ items?: RetellAgent[] } | RetellAgent[]>({
     path: "/list-agents",
-    method: "GET",
+    method: "POST",
+    body: {},
   });
+  return Array.isArray(res) ? res : (res.items ?? []);
 }
 
 // ---------- Web calls (browser test calls) ----------
@@ -258,13 +261,74 @@ export function getCall(callId: string): Promise<RetellCall> {
   });
 }
 
-export function listCalls(
+export async function listCalls(
   filters?: { agent_id?: RetellAgentId; limit?: number },
 ): Promise<RetellCall[]> {
-  return callRetell<RetellCall[]>({
-    path: "/list-calls",
+  // Migrated to POST /v3/list-calls (legacy /v2/list-calls deprecated 2026-06-15).
+  const res = await callRetell<{ items?: RetellCall[] } | RetellCall[]>({
+    path: "/v3/list-calls",
     method: "POST",
     body: filters ?? {},
+  });
+  return Array.isArray(res) ? res : (res.items ?? []);
+}
+
+// ---------- Voices ----------
+
+export interface RetellVoice {
+  voice_id: string;
+  voice_name?: string;
+  provider?: string;
+  gender?: string;
+  accent?: string;
+  age?: string;
+  preview_audio_url?: string;
+  avatar_url?: string;
+  [key: string]: unknown;
+}
+
+export function listVoices(): Promise<RetellVoice[]> {
+  return callRetell<RetellVoice[]>({ path: "/list-voices", method: "GET" });
+}
+
+// ---------- Phone numbers ----------
+
+export interface RetellPhoneNumber {
+  phone_number: string;
+  phone_number_pretty?: string;
+  nickname?: string;
+  inbound_agents?: { agent_id: string }[];
+  outbound_agents?: { agent_id: string }[];
+  [key: string]: unknown;
+}
+
+export async function listPhoneNumbers(): Promise<RetellPhoneNumber[]> {
+  // Migrated to GET /v2/list-phone-numbers (legacy /list-phone-numbers deprecated
+  // 2026-06-15). Response is a paginated { items } envelope.
+  const res = await callRetell<{ items?: RetellPhoneNumber[] } | RetellPhoneNumber[]>({
+    path: "/v2/list-phone-numbers",
+    method: "GET",
+  });
+  return Array.isArray(res) ? res : (res.items ?? []);
+}
+
+// ---------- LLM read/update ----------
+
+export function getLlm(llmId: string): Promise<RetellLlm> {
+  return callRetell<RetellLlm>({
+    path: `/get-retell-llm/${encodeURIComponent(llmId)}`,
+    method: "GET",
+  });
+}
+
+export function updateLlm(
+  llmId: string,
+  patch: { general_prompt?: string; general_tools?: unknown[] },
+): Promise<RetellLlm> {
+  return callRetell<RetellLlm>({
+    path: `/update-retell-llm/${encodeURIComponent(llmId)}`,
+    method: "PATCH",
+    body: patch,
   });
 }
 
@@ -277,6 +341,10 @@ export const retellService = {
   updateAgent,
   deleteAgent,
   listAgents,
+  listVoices,
+  listPhoneNumbers,
+  getLlm,
+  updateLlm,
   createWebCall,
   createPhoneCall,
   createBatchCall,

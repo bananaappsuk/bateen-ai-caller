@@ -1,77 +1,73 @@
-// DEV ONLY — hardcoded user accounts for local/staging access.
-// Do NOT use this for production. Replace with real auth before launch.
+// Auth compatibility layer — real Supabase Auth behind the original getDevUser()
+// synchronous API the pages already use. The AuthProvider (src/lib/auth.tsx)
+// keeps `currentUser` in sync with the Supabase session; ProtectedRoute
+// guarantees a user exists before a protected page renders, so getDevUser()
+// is non-null inside the dashboard.
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 export type DevRole = "admin" | "user";
 
-export interface DevUser {
+export interface AppUser {
+  id: string;
   email: string;
-  password: string;
-  role: DevRole;
   name: string;
   initials: string;
-  allowedRoutes: string[]; // route prefixes the user may access
+  role: DevRole;
 }
 
-export const DEV_USERS: DevUser[] = [
-  {
-    email: "admin@aitelecaller.com",
-    password: "Admin@123",
-    role: "admin",
-    name: "Admin",
-    initials: "AD",
-    allowedRoutes: [
-      "/dashboard",
-      "/ai-agents",
-      "/dashboard/agents",
-      "/campaigns",
-      "/dashboard/campaigns",
-      "/leads",
-      "/dashboard/leads",
-      "/settings",
-      "/dashboard/settings",
-      "/academy",
-      "/dashboard/academy",
-      "/support",
-      "/dashboard/support",
-    ],
-  },
-  {
-    email: "user@business.com",
-    password: "User@123",
-    role: "user",
-    name: "Business User",
-    initials: "BU",
-    allowedRoutes: ["/dashboard", "/campaigns", "/leads"],
-  },
-];
+let currentUser: AppUser | null = null;
 
-const STORAGE_KEY = "dev_auth_user";
+function initialsFrom(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const two = (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
+  return (two || name.slice(0, 2)).toUpperCase();
+}
 
-export const devSignIn = (email: string, password: string): DevUser | null => {
-  const match = DEV_USERS.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-  );
-  if (!match) return null;
-  const { password: _pw, ...safe } = match;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(safe));
-  return match;
-};
+export function mapUser(u: User | null): AppUser | null {
+  if (!u) return null;
+  const meta = (u.user_metadata ?? {}) as Record<string, unknown>;
+  const name = (meta.name as string) || (u.email?.split("@")[0] ?? "User");
+  const role = ((meta.role as DevRole) ?? "user") as DevRole;
+  return { id: u.id, email: u.email ?? "", name, initials: initialsFrom(name), role };
+}
 
-export const devSignOut = () => localStorage.removeItem(STORAGE_KEY);
+export function setCurrentUser(u: AppUser | null): void {
+  currentUser = u;
+}
 
-export const getDevUser = (): Omit<DevUser, "password"> | null => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
+// Synchronous accessor used throughout the dashboard pages.
+export function getDevUser(): AppUser | null {
+  return currentUser;
+}
 
-export const canAccessRoute = (
-  user: Pick<DevUser, "allowedRoutes"> | null,
-  href: string
-): boolean => {
-  if (!user) return false;
-  return user.allowedRoutes.some((r) => href === r || href.startsWith(r + "/"));
-};
+export async function signIn(email: string, password: string): Promise<AppUser | null> {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  const u = mapUser(data.user);
+  setCurrentUser(u);
+  return u;
+}
+
+export async function signUp(email: string, password: string, name: string): Promise<AppUser | null> {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { name } },
+  });
+  if (error) throw error;
+  const u = mapUser(data.user);
+  setCurrentUser(u);
+  return u;
+}
+
+export async function devSignOut(): Promise<void> {
+  await supabase.auth.signOut();
+  setCurrentUser(null);
+}
+
+// All authenticated users see the full nav; admin-only pages gate on role
+// separately. (Kept for signature compatibility with the dashboard pages.)
+export function canAccessRoute(_user: AppUser | null, _href: string): boolean {
+  return true;
+}

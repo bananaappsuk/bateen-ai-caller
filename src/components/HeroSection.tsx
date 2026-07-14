@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Phone, Zap, BarChart3 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
 import StatsBar from "@/components/StatsBar";
@@ -10,10 +13,31 @@ const stats = [
   { icon: BarChart3, value: "1 Year+", label: "Proven Track Record" },
 ];
 
-const DEMO_URL =
-  "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0qcRUglD8qicU4kzrD-rFtlyP94h0JaZnv_-41rtPM-BkStaGx-mBvWG0nOP8EzQzaaMgYk8Qm";
-
 const HeroSection = () => {
+  const [demoPhone, setDemoPhone] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleDemo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!demoPhone.trim()) return;
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{ ok?: boolean; called?: boolean; error?: string }>(
+        "demo-call",
+        { body: { phone: demoPhone.trim() } },
+      );
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setSent(true);
+      toast.success(data?.called ? "Calling you now — pick up!" : "Thanks! We'll call you shortly.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start the demo call.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <>
       <section className="relative z-10 min-h-[88vh] flex items-center justify-center overflow-hidden">
@@ -105,13 +129,24 @@ const HeroSection = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4">
-              <a href={DEMO_URL} target="_blank" rel="noopener noreferrer" className="btn-primary">
-                Get a live demo call
-              </a>
-              <Link
-                to="/signup"
-                className="btn-secondary"
-              >
+              {sent ? (
+                <span className="btn-primary cursor-default">📞 We'll ring you shortly!</span>
+              ) : (
+                <form onSubmit={handleDemo} className="flex items-center gap-2">
+                  <input
+                    type="tel"
+                    value={demoPhone}
+                    onChange={(e) => setDemoPhone(e.target.value)}
+                    placeholder="+44 7700 900123"
+                    className="h-11 rounded-xl border border-slate-200 px-4 text-base bg-white/90 focus:outline-none focus:ring-2 focus:ring-[#00D4FF]"
+                    required
+                  />
+                  <button type="submit" disabled={sending} className="btn-primary disabled:opacity-60">
+                    {sending ? "Calling…" : "Get a live demo call"}
+                  </button>
+                </form>
+              )}
+              <Link to="/signup" className="btn-secondary">
                 Start free trial
               </Link>
             </div>

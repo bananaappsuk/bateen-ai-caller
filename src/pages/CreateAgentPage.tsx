@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { retellService, RetellApiError } from "@/services/retellService";
+import { retellService, RetellApiError, type RetellVoice } from "@/services/retellService";
+import { createAgent, listAgents } from "@/services/agentsService";
+import { getBillingAccount } from "@/services/creditsService";
+import { buildAgentTools, buildToolGuidance, loadIntegrations } from "@/lib/agentTools";
+import { limitsFor } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
@@ -43,6 +47,8 @@ import {
   Voicemail,
   Gauge,
   Waves,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -57,8 +63,6 @@ const navItems = [
   { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
 ];
 
-const STORAGE_KEY = "linked_ai_agents_list";
-
 const PRESETS = [
   { id: "sales", label: "Sales Outreach", desc: "Qualify leads and book meetings" },
   { id: "support", label: "Customer Support", desc: "Answer questions and resolve issues" },
@@ -66,23 +70,24 @@ const PRESETS = [
   { id: "reminder", label: "Appointment Reminder", desc: "Confirm and reschedule bookings" },
 ];
 
-const VOICES = [
-  { id: "mia", label: "Mia — Warm female (EN-US)", retellVoiceId: "11labs-Adrian" },
-  { id: "salma", label: "Salma — Professional female (EN-GB)", retellVoiceId: "11labs-Anthony" },
-  { id: "sarah", label: "Sarah — Friendly female (EN-AU)", retellVoiceId: "11labs-Lily" },
-  { id: "james", label: "James — Confident male (EN-US)", retellVoiceId: "11labs-Brian" },
-];
-
 const AMBIENCES = [
   { id: "none", label: "None (silent)" },
-  { id: "office", label: "Office background" },
-  { id: "cafe", label: "Cafe" },
+  { id: "cafe", label: "Coffee shop" },
   { id: "callcenter", label: "Call center" },
 ];
 
+// UI ambience -> Retell ambient_sound value.
+const AMBIENT_MAP: Record<string, string> = {
+  cafe: "coffee-shop",
+  callcenter: "call-center",
+};
+
+const WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/retell-webhook`;
+const LLM_MODEL = "gpt-4.1-mini";
+
 const defaultForm = {
   preset: "sales",
-  voice: "mia",
+  voiceId: "",
   internalName: "",
   prompt: "",
   ambience: "none",
@@ -91,143 +96,177 @@ const defaultForm = {
   endCallAutomatically: true,
   bookCalSlot: false,
   transferToHuman: false,
+  transferNumber: "",
 };
 
 const CreateAgentPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
   const [form, setForm] = useState(defaultForm);
+  const [voices, setVoices] = useState<RetellVoice[]>([]);
+  const [loadingVoices, setLoadingVoices] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [maxAgents, setMaxAgents] = useState(Number.MAX_SAFE_INTEGER);
+  const [agentCount, setAgentCount] = useState(0);
+  const [builder, setBuilder] = useState({ businessName: "", businessDescription: "", targetAudience: "", goal: "" });
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{ script?: string; error?: string }>(
+        "generate-script",
+        { body: builder },
+      );
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.script) {
+        setForm((f) => ({ ...f, prompt: data.script as string }));
+        toast.success("Script generated — edit it as you like.");
+      } else {
+        toast.error("No script returned.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate script.");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
   }, [user, navigate]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await retellService.listVoices();
+        if (cancelled) return;
+        setVoices(list);
+        if (list.length > 0) setForm((f) => ({ ...f, voiceId: list[0].voice_id }));
+      } catch {
+        if (!cancelled) setVoices([]);
+      } finally {
+        if (!cancelled) setLoadingVoices(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [acct, agents] = await Promise.all([getBillingAccount(), listAgents()]);
+        setMaxAgents(limitsFor(acct?.plan_tier).maxAgents);
+        setAgentCount(agents.length);
+      } catch {
+        /* noop */
+      }
+    })();
+  }, []);
+
   if (!user) return null;
 
   const visibleNav = navItems.filter((item) => canAccessRoute(user, item.href));
-
   const handleSignOut = () => {
     devSignOut();
     navigate("/login", { replace: true });
   };
-
   const handleCancel = () => navigate("/ai-agents");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.internalName.trim() || !form.prompt.trim()) return;
-    if (submitting) return;
+    if (!form.internalName.trim() || !form.prompt.trim() || !form.voiceId || submitting) return;
+
+    if (agentCount >= maxAgents) {
+      toast.error(`Your plan allows up to ${maxAgents} agent${maxAgents === 1 ? "" : "s"}. Upgrade to add more.`);
+      return;
+    }
 
     setSubmitting(true);
-    const selectedVoice = VOICES.find((v) => v.id === form.voice);
-    const retellVoiceId = selectedVoice?.retellVoiceId ?? "11labs-Adrian";
+    const loadingId = toast.loading("Creating agent on Retell…");
     const name = form.internalName.trim();
     const prompt = form.prompt.trim();
 
-    let retellAgentId: string | undefined;
-    let retellAgentVersion: number | undefined;
-    let retellLlmId: string | undefined;
-    const llmModel = "gpt-4o-mini";
-    const language = "en-US";
-    let syncStatus: "synced" | "error" = "error";
-    let errorMessage: string | undefined;
+    const integrations = loadIntegrations();
+    if (form.bookCalSlot && !integrations.calApiKey) {
+      toast("Cal.com isn't configured (Settings → Integrations) — booking tool skipped.");
+    }
+    const toolConfig = {
+      endCall: { enabled: form.endCallAutomatically },
+      calBooking: {
+        enabled: form.bookCalSlot,
+        calApiKey: integrations.calApiKey,
+        eventTypeId: integrations.calEventTypeId,
+        timezone: integrations.calTimezone,
+      },
+      transfer: { enabled: form.transferToHuman, phoneNumber: form.transferNumber.trim() },
+    };
+    const tools = buildAgentTools(toolConfig);
 
     try {
-      // 1. Create the Retell LLM that will power the agent.
+      // 1. Retell LLM (with tools + tool guidance appended to the script).
       const llm = await retellService.createLlm({
-        model: llmModel,
-        general_prompt: prompt,
+        model: LLM_MODEL,
+        general_prompt: prompt + buildToolGuidance(toolConfig),
+        ...(tools.length ? { general_tools: tools } : {}),
       });
-      retellLlmId = llm.llm_id;
 
-      // 2. Create the Retell agent bound to that LLM.
-      const agent = await retellService.createAgent({
+      // 2. Retell agent (with our webhook + VocalMax-style behavior options).
+      const ambientSound = AMBIENT_MAP[form.ambience];
+      const agentInput: Record<string, unknown> = {
         agent_name: name,
-        voice_id: retellVoiceId,
-        language,
+        voice_id: form.voiceId,
         response_engine: { type: "retell-llm", llm_id: llm.llm_id },
+        webhook_url: WEBHOOK_URL,
+        responsiveness: form.responseSpeed / 10,
+      };
+      if (ambientSound) {
+        agentInput.ambient_sound = ambientSound;
+        agentInput.ambient_sound_volume = 0.3;
+      }
+      if (form.hangUpOnVoicemail) {
+        agentInput.voicemail_option = { action: { type: "hangup" } };
+      }
+      const agent = await retellService.createAgent(agentInput as never);
+
+      // 3. Persist to DB.
+      await createAgent({
+        retell_agent_id: agent.agent_id,
+        retell_agent_version: typeof agent.version === "number" ? agent.version : 0,
+        retell_llm_id: llm.llm_id,
+        name,
+        retell_voice_id: form.voiceId,
+        prompt,
+        language: "en-US",
+        llm: LLM_MODEL,
+        status: "active",
+        metadata: {
+          preset: form.preset,
+          ambience: form.ambience,
+          responseSpeed: form.responseSpeed,
+          endCallAutomatically: form.endCallAutomatically,
+          bookCalSlot: form.bookCalSlot,
+          transferToHuman: form.transferToHuman,
+        },
       });
 
-      retellAgentId = agent.agent_id;
-      retellAgentVersion = typeof agent.version === "number" ? agent.version : 0;
-      syncStatus = "synced";
-      toast.success("Agent synced with Retell.");
+      toast.success("Agent created and synced with Retell.", { id: loadingId });
+      navigate("/ai-agents");
     } catch (err) {
-      errorMessage =
+      const msg =
         err instanceof RetellApiError
           ? err.message
           : err instanceof Error
             ? err.message
-            : "Failed to sync agent with Retell.";
-      toast.error(`Agent saved locally, but Retell sync failed: ${errorMessage}`);
+            : "Failed to create agent.";
+      toast.error(msg, { id: loadingId });
+      setSubmitting(false);
     }
-
-    // Persist to database (agents table)
-    let dbAgentId: string | undefined;
-    try {
-      const { data, error } = await supabase
-        .from("agents")
-        .insert({
-          retell_agent_id: retellAgentId ?? null,
-          retell_agent_version: retellAgentVersion ?? null,
-          retell_llm_id: retellLlmId ?? null,
-          name,
-          voice: form.voice,
-          retell_voice_id: retellVoiceId,
-          prompt,
-          language,
-          llm: llmModel,
-          status: syncStatus === "synced" ? "active" : "error",
-          error_message: errorMessage ?? null,
-          metadata: {
-            preset: form.preset,
-            ambience: form.ambience,
-            responseSpeed: form.responseSpeed,
-            hangUpOnVoicemail: form.hangUpOnVoicemail,
-            endCallAutomatically: form.endCallAutomatically,
-            bookCalSlot: form.bookCalSlot,
-            transferToHuman: form.transferToHuman,
-          },
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      dbAgentId = data?.id;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to save agent.";
-      toast.error(`Could not save agent to database: ${msg}`);
-    }
-
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const existing = raw ? JSON.parse(raw) : [];
-      const next = [
-        ...existing,
-        {
-          id: dbAgentId ?? crypto.randomUUID(),
-          kind: "created",
-          ...form,
-          internalName: name,
-          prompt,
-          retellAgentId,
-          retellAgentVersion,
-          retellLlmId,
-          retellVoiceId,
-          language,
-          llm: llmModel,
-          syncStatus,
-          lastSync: new Date().toISOString(),
-        },
-      ];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
-    setSubmitting(false);
-    navigate("/ai-agents");
   };
-
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
@@ -246,9 +285,9 @@ const CreateAgentPage = () => {
                   className={({ isActive }) =>
                     cn(
                       "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                      isActive || (item.href === "/ai-agents")
+                      isActive || item.href === "/ai-agents"
                         ? "bg-cyan-50 text-cyan-600"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                     )
                   }
                   end={item.href === "/dashboard"}
@@ -269,9 +308,7 @@ const CreateAgentPage = () => {
               </div>
               <div className="min-w-0 flex-1 text-left">
                 <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
-                <p className="text-xs text-slate-500 truncate capitalize">
-                  {user.role} · {user.email}
-                </p>
+                <p className="text-xs text-slate-500 truncate capitalize">{user.role}</p>
               </div>
               <ChevronsUpDown className="h-4 w-4 text-slate-400 shrink-0" />
             </DropdownMenuTrigger>
@@ -281,10 +318,7 @@ const CreateAgentPage = () => {
                 <p className="text-xs text-slate-500 capitalize">{user.role}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-600 cursor-pointer"
-                onClick={handleSignOut}
-              >
+              <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign out
               </DropdownMenuItem>
@@ -293,9 +327,8 @@ const CreateAgentPage = () => {
         </div>
       </aside>
 
-      {/* Main — fixed viewport with sticky header + footer */}
+      {/* Main */}
       <main className="flex-1 ml-[260px] h-screen flex flex-col">
-        {/* Sticky page header */}
         <div className="shrink-0 bg-white border-b border-slate-100 px-6 sm:px-10 py-5">
           <div className="max-w-3xl mx-auto flex items-center gap-4">
             <button
@@ -314,12 +347,7 @@ const CreateAgentPage = () => {
           </div>
         </div>
 
-        {/* Scrollable form area */}
-        <form
-          id="create-agent-form"
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto"
-        >
+        <form id="create-agent-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-6 sm:px-10 py-8 space-y-6">
             {/* Presets */}
             <div className="space-y-2">
@@ -334,7 +362,7 @@ const CreateAgentPage = () => {
                       "text-left p-3 rounded-xl border transition-all",
                       form.preset === p.id
                         ? "border-cyan-400 bg-cyan-50/50 ring-2 ring-cyan-100"
-                        : "border-slate-200 hover:border-slate-300"
+                        : "border-slate-200 hover:border-slate-300",
                     )}
                   >
                     <p className="text-sm font-semibold text-slate-900">{p.label}</p>
@@ -344,24 +372,30 @@ const CreateAgentPage = () => {
               </div>
             </div>
 
-            {/* Voice */}
+            {/* Voice (live from Retell) */}
             <div className="space-y-2">
               <Label htmlFor="voice">Voice</Label>
-              <Select
-                value={form.voice}
-                onValueChange={(v) => setForm({ ...form, voice: v })}
-              >
-                <SelectTrigger id="voice">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {VOICES.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {loadingVoices ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading voices from Retell…
+                </div>
+              ) : (
+                <Select value={form.voiceId} onValueChange={(v) => setForm({ ...form, voiceId: v })}>
+                  <SelectTrigger id="voice">
+                    <SelectValue placeholder="Choose a voice" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {voices.map((v) => (
+                      <SelectItem key={v.voice_id} value={v.voice_id}>
+                        {v.voice_name ?? v.voice_id}
+                        {v.gender ? ` · ${v.gender}` : ""}
+                        {v.accent ? ` · ${v.accent}` : ""}
+                        {v.provider ? ` (${v.provider})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Agent Name */}
@@ -376,6 +410,45 @@ const CreateAgentPage = () => {
               />
             </div>
 
+            {/* AI script builder */}
+            <div className="rounded-xl border border-cyan-100 bg-cyan-50/40 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-cyan-500" />
+                <p className="text-sm font-semibold text-slate-900">Generate a script with AI</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Input
+                  placeholder="Business name"
+                  value={builder.businessName}
+                  onChange={(e) => setBuilder({ ...builder, businessName: e.target.value })}
+                />
+                <Input
+                  placeholder="Target audience"
+                  value={builder.targetAudience}
+                  onChange={(e) => setBuilder({ ...builder, targetAudience: e.target.value })}
+                />
+              </div>
+              <Textarea
+                placeholder="What does the business do?"
+                rows={2}
+                value={builder.businessDescription}
+                onChange={(e) => setBuilder({ ...builder, businessDescription: e.target.value })}
+              />
+              <Input
+                placeholder="Goal of the call (e.g. book a demo)"
+                value={builder.goal}
+                onChange={(e) => setBuilder({ ...builder, goal: e.target.value })}
+              />
+              <Button
+                type="button"
+                onClick={handleGenerate}
+                disabled={generating}
+                className="bg-slate-900 text-white hover:bg-slate-800"
+              >
+                {generating ? "Generating…" : "✨ Generate script"}
+              </Button>
+            </div>
+
             {/* Script / Prompt */}
             <div className="space-y-2">
               <Label htmlFor="prompt">Script / Prompt</Label>
@@ -387,9 +460,7 @@ const CreateAgentPage = () => {
                 rows={6}
                 required
               />
-              <p className="text-xs text-slate-500">
-                Describe the agent's role, tone, and objectives.
-              </p>
+              <p className="text-xs text-slate-500">Describe the agent's role, tone, and objectives.</p>
             </div>
 
             {/* Background Ambience */}
@@ -397,10 +468,7 @@ const CreateAgentPage = () => {
               <Label htmlFor="ambience" className="flex items-center gap-1.5">
                 <Waves className="h-3.5 w-3.5" /> Background Ambience
               </Label>
-              <Select
-                value={form.ambience}
-                onValueChange={(v) => setForm({ ...form, ambience: v })}
-              >
+              <Select value={form.ambience} onValueChange={(v) => setForm({ ...form, ambience: v })}>
                 <SelectTrigger id="ambience">
                   <SelectValue />
                 </SelectTrigger>
@@ -420,9 +488,7 @@ const CreateAgentPage = () => {
                 <Label className="flex items-center gap-1.5">
                   <Gauge className="h-3.5 w-3.5" /> Response Speed
                 </Label>
-                <span className="text-xs font-medium text-slate-700">
-                  {form.responseSpeed}/10
-                </span>
+                <span className="text-xs font-medium text-slate-700">{form.responseSpeed}/10</span>
               </div>
               <Slider
                 min={1}
@@ -443,9 +509,7 @@ const CreateAgentPage = () => {
                 <Voicemail className="h-4 w-4 text-slate-500" />
                 <div>
                   <p className="text-sm font-medium text-slate-900">Hang Up on Voicemail</p>
-                  <p className="text-xs text-slate-500">
-                    Automatically end the call if voicemail is detected.
-                  </p>
+                  <p className="text-xs text-slate-500">Automatically end the call if voicemail is detected.</p>
                 </div>
               </div>
               <Switch
@@ -463,9 +527,7 @@ const CreateAgentPage = () => {
                     <PhoneOff className="h-4 w-4 text-slate-500" />
                     <div>
                       <p className="text-sm font-medium text-slate-900">End Call Automatically</p>
-                      <p className="text-xs text-slate-500">
-                        Let the agent hang up when the conversation is complete.
-                      </p>
+                      <p className="text-xs text-slate-500">Let the agent hang up when the conversation is complete.</p>
                     </div>
                   </div>
                   <Switch
@@ -478,9 +540,7 @@ const CreateAgentPage = () => {
                     <CalendarCheck className="h-4 w-4 text-slate-500" />
                     <div>
                       <p className="text-sm font-medium text-slate-900">Book a Cal.com Slot</p>
-                      <p className="text-xs text-slate-500">
-                        Allow the agent to book meetings via Cal.com.
-                      </p>
+                      <p className="text-xs text-slate-500">Allow the agent to book meetings via Cal.com.</p>
                     </div>
                   </div>
                   <Switch
@@ -493,9 +553,7 @@ const CreateAgentPage = () => {
                     <PhoneForwarded className="h-4 w-4 text-slate-500" />
                     <div>
                       <p className="text-sm font-medium text-slate-900">Transfer to a Human</p>
-                      <p className="text-xs text-slate-500">
-                        Warm-transfer the call to a human agent when needed.
-                      </p>
+                      <p className="text-xs text-slate-500">Warm-transfer the call to a human agent when needed.</p>
                     </div>
                   </div>
                   <Switch
@@ -503,12 +561,18 @@ const CreateAgentPage = () => {
                     onCheckedChange={(c) => setForm({ ...form, transferToHuman: c })}
                   />
                 </div>
+                {form.transferToHuman && (
+                  <Input
+                    value={form.transferNumber}
+                    onChange={(e) => setForm({ ...form, transferNumber: e.target.value })}
+                    placeholder="Transfer-to number (E.164, e.g. +447700900123)"
+                  />
+                )}
               </div>
             </div>
           </div>
         </form>
 
-        {/* Sticky footer action bar */}
         <div className="shrink-0 bg-white border-t border-slate-100 px-6 sm:px-10 py-4">
           <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
             <Button type="button" variant="outline" onClick={handleCancel}>
@@ -517,10 +581,10 @@ const CreateAgentPage = () => {
             <Button
               type="submit"
               form="create-agent-form"
-              disabled={submitting}
+              disabled={submitting || loadingVoices}
               className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-95"
             >
-              Create Agent
+              {submitting ? "Creating…" : "Create Agent"}
             </Button>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/ai-tele-caller-logo.png";
-import { devSignIn } from "@/lib/devAuth";
+import { signIn } from "@/lib/devAuth";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -11,15 +11,19 @@ const LoginPage = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const user = devSignIn(email, password);
-    if (!user) {
-      setError("Invalid email or password.");
-      return;
+    setSubmitting(true);
+    try {
+      await signIn(email, password);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid email or password.");
+      setSubmitting(false);
     }
-    navigate("/dashboard");
   };
 
   return (
@@ -57,9 +61,10 @@ const LoginPage = () => {
           )}
           <Button
             type="submit"
-            className="h-12 w-full rounded-xl font-semibold text-white bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] hover:opacity-90 transition-opacity"
+            disabled={submitting}
+            className="h-12 w-full rounded-xl font-semibold text-white bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] hover:opacity-90 transition-opacity disabled:opacity-60"
           >
-            Sign in
+            {submitting ? "Signing in…" : "Sign in"}
           </Button>
         </form>
 

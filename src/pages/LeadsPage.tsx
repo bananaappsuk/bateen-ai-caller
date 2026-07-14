@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
+import { listLeads, type LeadRow, type LeadClassification } from "@/services/leadsService";
+import { listCampaigns } from "@/services/campaignsService";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -21,17 +23,14 @@ import {
   Lock,
   LogOut,
   ChevronsUpDown,
-  CreditCard,
-  Settings,
-  RefreshCw,
   Download,
   Star,
   PhoneOff,
   PhoneCall,
   Voicemail,
   Loader2,
-  AlertTriangle,
   UserRound,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -46,135 +45,90 @@ const navItems = [
   { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
 ];
 
-type LeadStatus =
-  | "Interested"
-  | "Not Interested"
-  | "Requested Callback"
-  | "Voicemail"
-  | "Reviewing"
-  | "Invalid Numbers";
+const CLASSIFICATIONS: LeadClassification[] = [
+  "Interested",
+  "Not Interested",
+  "Requested Callback",
+  "Voicemail",
+  "Reviewing",
+];
 
-interface Lead {
-  id: string;
-  name: string;
-  phone: string;
-  campaign: string;
-  score: number;
-  status: LeadStatus;
-  updatedAt: string;
-}
-
-const STORAGE_KEY = "ai_leads_list";
-
-const loadLeads = (): Lead[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-const statusStyles: Record<LeadStatus, string> = {
+const styles: Record<string, string> = {
   Interested: "bg-emerald-50 text-emerald-600",
   "Not Interested": "bg-red-50 text-red-600",
   "Requested Callback": "bg-amber-50 text-amber-600",
   Voicemail: "bg-purple-50 text-purple-600",
-  Reviewing: "bg-slate-100 text-slate-600",
-  "Invalid Numbers": "bg-orange-50 text-orange-600",
+  Reviewing: "bg-slate-100 text-slate-500",
 };
-
-const filterTabs: Array<{ label: string; value: "All" | LeadStatus }> = [
-  { label: "All", value: "All" },
-  { label: "Interested", value: "Interested" },
-  { label: "Not Interested", value: "Not Interested" },
-  { label: "Requested Callback", value: "Requested Callback" },
-  { label: "Voicemail", value: "Voicemail" },
-  { label: "Reviewing", value: "Reviewing" },
-  { label: "Invalid Numbers", value: "Invalid Numbers" },
-];
 
 const LeadsPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
-  const [leads, setLeads] = useState<Lead[]>(loadLeads);
-  const [activeTab, setActiveTab] = useState<"All" | LeadStatus>("All");
-  const [isReviewing, setIsReviewing] = useState(false);
-
-  const handleReReview = useCallback(async () => {
-    if (isReviewing) return;
-    setIsReviewing(true);
-    try {
-      const latest = await new Promise<Lead[]>((resolve, reject) => {
-        setTimeout(() => {
-          try {
-            resolve(loadLeads());
-          } catch (e) {
-            reject(e);
-          }
-        }, 900);
-      });
-      setLeads(latest);
-      toast.success("Lead list updated successfully.");
-    } catch {
-      toast.error("Unable to fetch the latest leads. Please try again.");
-    } finally {
-      setIsReviewing(false);
-    }
-  }, [isReviewing]);
+  const [leads, setLeads] = useState<LeadRow[]>([]);
+  const [campaignNames, setCampaignNames] = useState<Map<string, string>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"All" | LeadClassification>("All");
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
   }, [user, navigate]);
 
+  const load = async () => {
+    try {
+      const [l, campaigns] = await Promise.all([listLeads(), listCampaigns()]);
+      setLeads(l);
+      setCampaignNames(new Map(campaigns.map((c) => [c.campaign_id, c.name])));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load leads.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { Total: leads.length };
+    for (const k of CLASSIFICATIONS) c[k] = 0;
+    for (const l of leads) if (l.lead_status && c[l.lead_status] != null) c[l.lead_status]++;
+    return c;
+  }, [leads]);
+
   if (!user) return null;
 
   const visibleNav = navItems.filter((item) => canAccessRoute(user, item.href));
-
   const handleSignOut = () => {
     devSignOut();
     navigate("/login", { replace: true });
   };
 
-  const counts = useMemo(() => {
-    const c = {
-      Total: leads.length,
-      Interested: 0,
-      Callbacks: 0,
-      "Not Interested": 0,
-      Voicemail: 0,
-      Reviewing: 0,
-      "Invalid Numbers": 0,
-    };
-    leads.forEach((l) => {
-      if (l.status === "Interested") c.Interested++;
-      else if (l.status === "Requested Callback") c.Callbacks++;
-      else if (l.status === "Not Interested") c["Not Interested"]++;
-      else if (l.status === "Voicemail") c.Voicemail++;
-      else if (l.status === "Reviewing") c.Reviewing++;
-      else if (l.status === "Invalid Numbers") c["Invalid Numbers"]++;
-    });
-    return c;
-  }, [leads]);
+  const filtered = activeTab === "All" ? leads : leads.filter((l) => l.lead_status === activeTab);
 
   const summaryCards = [
     { label: "Total Leads", value: counts.Total, icon: Users, color: "text-slate-600", bg: "bg-slate-100" },
     { label: "Interested", value: counts.Interested, icon: Star, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Callbacks", value: counts.Callbacks, icon: PhoneCall, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Callbacks", value: counts["Requested Callback"], icon: PhoneCall, color: "text-amber-600", bg: "bg-amber-50" },
     { label: "Not Interested", value: counts["Not Interested"], icon: PhoneOff, color: "text-red-600", bg: "bg-red-50" },
     { label: "Voicemail", value: counts.Voicemail, icon: Voicemail, color: "text-purple-600", bg: "bg-purple-50" },
     { label: "Reviewing", value: counts.Reviewing, icon: Loader2, color: "text-slate-600", bg: "bg-slate-100" },
-    { label: "Invalid Numbers", value: counts["Invalid Numbers"], icon: AlertTriangle, color: "text-orange-600", bg: "bg-orange-50" },
   ];
-
-  const filteredLeads = activeTab === "All" ? leads : leads.filter((l) => l.status === activeTab);
 
   const handleExport = () => {
     const rows = [
-      ["Name", "Phone", "Campaign", "Score", "Status", "Updated"],
-      ...filteredLeads.map((l) => [l.name, l.phone, l.campaign, String(l.score), l.status, l.updatedAt]),
+      ["Name", "Phone", "Campaign", "Status", "Classification", "Updated"],
+      ...filtered.map((l) => [
+        l.name ?? "",
+        l.phone,
+        campaignNames.get(l.campaign_id ?? "") ?? "",
+        l.status,
+        l.lead_status ?? "",
+        l.updated_at ?? "",
+      ]),
     ];
-    const csv = rows.map((r) => r.map((v) => `"${(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = rows.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -203,7 +157,7 @@ const LeadsPage = () => {
                       "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors",
                       isActive
                         ? "bg-cyan-50 text-cyan-600"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                     )
                   }
                   end={item.href === "/dashboard"}
@@ -224,9 +178,7 @@ const LeadsPage = () => {
               </div>
               <div className="min-w-0 flex-1 text-left">
                 <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
-                <p className="text-xs text-slate-500 truncate capitalize">
-                  {user.role} · {user.email}
-                </p>
+                <p className="text-xs text-slate-500 truncate capitalize">{user.role}</p>
               </div>
               <ChevronsUpDown className="h-4 w-4 text-slate-400 shrink-0" />
             </DropdownMenuTrigger>
@@ -236,10 +188,7 @@ const LeadsPage = () => {
                 <p className="text-xs text-slate-500 capitalize">{user.role}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-600 cursor-pointer"
-                onClick={handleSignOut}
-              >
+              <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign out
               </DropdownMenuItem>
@@ -251,94 +200,72 @@ const LeadsPage = () => {
       {/* Main */}
       <main className="flex-1 ml-[260px] min-h-screen">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Header */}
           <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Scored Leads</h1>
-              <p className="text-sm text-slate-500 mt-1">
-                Leads ranked by your custom AI scoring rules.
-              </p>
+              <p className="text-sm text-slate-500 mt-1">Leads classified by your AI from every call.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
-                <CreditCard className="h-4 w-4 text-cyan-500" />
-                0 Credits
-              </div>
               <button
-                className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
-                aria-label="Settings"
+                onClick={() => {
+                  setLoading(true);
+                  load();
+                }}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-100 shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
-                <Settings className="h-4 w-4" />
-              </button>
-              <button
-                onClick={handleReReview}
-                disabled={isReviewing}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-100 shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isReviewing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                {isReviewing ? "Reviewing..." : "Re-review Leads"}
+                <RefreshCw className="h-4 w-4" /> Refresh
               </button>
               <button
                 onClick={handleExport}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95"
               >
-                <Download className="h-4 w-4" />
-                Export CSV
+                <Download className="h-4 w-4" /> Export CSV
               </button>
             </div>
           </div>
 
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             {summaryCards.map((c) => (
-              <div
-                key={c.label}
-                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4"
-              >
+              <div key={c.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
                 <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center mb-3", c.bg)}>
                   <c.icon className={cn("h-4 w-4", c.color)} />
                 </div>
                 <p className="text-xs text-slate-500">{c.label}</p>
-                <p className="text-2xl font-bold text-slate-900 mt-0.5">{c.value}</p>
+                <p className="text-2xl font-bold text-slate-900 mt-0.5">{c.value ?? 0}</p>
               </div>
             ))}
           </div>
 
-          {/* Filter tabs */}
           <div className="mb-4 flex flex-wrap gap-2">
-            {filterTabs.map((t) => {
-              const isActive = activeTab === t.value;
-              return (
-                <button
-                  key={t.value}
-                  onClick={() => setActiveTab(t.value)}
-                  className={cn(
-                    "px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors",
-                    isActive
-                      ? "bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white border-transparent shadow-sm"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                  )}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
+            {(["All", ...CLASSIFICATIONS] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setActiveTab(t)}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors",
+                  activeTab === t
+                    ? "bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white border-transparent shadow-sm"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
+                )}
+              >
+                {t}
+              </button>
+            ))}
           </div>
 
-          {/* Table / empty state */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            {filteredLeads.length === 0 ? (
+            {loading ? (
+              <div className="py-20 flex items-center justify-center text-slate-400">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="py-20 flex flex-col items-center justify-center text-center px-6">
                 <div className="h-14 w-14 rounded-full bg-gradient-to-br from-cyan-50 to-purple-50 flex items-center justify-center mb-4">
                   <UserRound className="h-6 w-6 text-cyan-500" />
                 </div>
-                <h2 className="text-base font-semibold text-slate-900">No leads found in this category.</h2>
+                <h2 className="text-base font-semibold text-slate-900">No leads in this category.</h2>
                 <p className="text-sm text-slate-500 mt-1 max-w-sm">
-                  Once your AI agents start calling, scored leads will appear here.
+                  Once your AI agents start calling, classified leads appear here.
                 </p>
               </div>
             ) : (
@@ -349,24 +276,37 @@ const LeadsPage = () => {
                       <th className="text-left px-5 py-3 font-medium">Name</th>
                       <th className="text-left px-5 py-3 font-medium">Phone</th>
                       <th className="text-left px-5 py-3 font-medium">Campaign</th>
-                      <th className="text-left px-5 py-3 font-medium">Score</th>
-                      <th className="text-left px-5 py-3 font-medium">Status</th>
-                      <th className="text-left px-5 py-3 font-medium">Updated</th>
+                      <th className="text-left px-5 py-3 font-medium">Call Status</th>
+                      <th className="text-left px-5 py-3 font-medium">Classification</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLeads.map((l) => (
-                      <tr key={l.id} className="border-t border-slate-100 hover:bg-slate-50/60">
-                        <td className="px-5 py-3 font-medium text-slate-900">{l.name}</td>
+                    {filtered.map((l) => (
+                      <tr
+                        key={l.id}
+                        className="border-t border-slate-100 hover:bg-slate-50/60 cursor-pointer"
+                        onClick={() => navigate(`/dashboard/leads/${l.id}`)}
+                      >
+                        <td className="px-5 py-3 font-medium text-slate-900">{l.name ?? "—"}</td>
                         <td className="px-5 py-3 text-slate-600">{l.phone}</td>
-                        <td className="px-5 py-3 text-slate-600">{l.campaign}</td>
-                        <td className="px-5 py-3 text-slate-900 font-semibold">{l.score}</td>
-                        <td className="px-5 py-3">
-                          <span className={cn("px-2 py-0.5 rounded-full text-xs font-semibold", statusStyles[l.status])}>
-                            {l.status}
-                          </span>
+                        <td className="px-5 py-3 text-slate-600">
+                          {campaignNames.get(l.campaign_id ?? "") ?? "—"}
                         </td>
-                        <td className="px-5 py-3 text-slate-500">{l.updatedAt}</td>
+                        <td className="px-5 py-3 text-slate-600 capitalize">{l.status}</td>
+                        <td className="px-5 py-3">
+                          {l.lead_status ? (
+                            <span
+                              className={cn(
+                                "px-2 py-0.5 rounded-full text-xs font-semibold",
+                                styles[l.lead_status] ?? "bg-slate-100 text-slate-500",
+                              )}
+                            >
+                              {l.lead_status}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,7 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { retellService } from "@/services/retellService";
+import { toast } from "sonner";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
+import {
+  listCampaigns,
+  deleteCampaign,
+  type CampaignRow,
+  type CampaignStatus,
+} from "@/services/campaignsService";
+import { listAgents, type AgentRow } from "@/services/agentsService";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -10,17 +17,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   LayoutDashboard,
@@ -34,14 +30,13 @@ import {
   Megaphone,
   Plus,
   Eye,
-  Pencil,
   Trash2,
   LogOut,
   ChevronsUpDown,
   CreditCard,
   Settings,
   Phone,
-  BarChart3,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -56,110 +51,45 @@ const navItems = [
   { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
 ];
 
-interface Campaign {
-  id: string;
-  name: string;
-  agent: string;
-  status: "Draft" | "Active" | "Paused" | "Completed";
-  leads: number;
-  calls: number;
-  description: string;
-}
-
-const STORAGE_KEY = "ai_campaigns_list";
-
-const statusStyles: Record<Campaign["status"], string> = {
-  Draft: "bg-slate-100 text-slate-600",
-  Active: "bg-emerald-50 text-emerald-600",
-  Paused: "bg-amber-50 text-amber-600",
-  Completed: "bg-cyan-50 text-cyan-600",
-};
-
-const loadCampaigns = (): Campaign[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+const statusStyles: Record<CampaignStatus, string> = {
+  draft: "bg-slate-100 text-slate-600",
+  running: "bg-emerald-50 text-emerald-600",
+  paused: "bg-amber-50 text-amber-600",
+  completed: "bg-cyan-50 text-cyan-600",
 };
 
 const CampaignsPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
-  const [campaigns, setCampaigns] = useState<Campaign[]>(loadCampaigns);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Campaign | null>(null);
-  const [viewing, setViewing] = useState<Campaign | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-    agent: "",
-    status: "Draft" as Campaign["status"],
-    leads: 0,
-    calls: 0,
-    description: "",
-  });
+  const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
+  const [agents, setAgents] = useState<AgentRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
   }, [user, navigate]);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(campaigns));
-  }, [campaigns]);
+  const load = async () => {
+    try {
+      const [c, a] = await Promise.all([listCampaigns(), listAgents()]);
+      setCampaigns(c);
+      setAgents(a);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load campaigns.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Populate Campaign History from Retell /list-batch-call.
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const batches = await retellService.listBatchCalls();
-        if (cancelled || !Array.isArray(batches)) return;
-        const mapStatus = (s?: string): Campaign["status"] => {
-          const v = (s ?? "").toLowerCase();
-          if (v.includes("complete") || v.includes("finish")) return "Completed";
-          if (v.includes("pause")) return "Paused";
-          if (v.includes("progress") || v.includes("in_progress") || v.includes("active") || v.includes("register") || v.includes("scheduled"))
-            return "Active";
-          return "Draft";
-        };
-        setCampaigns((prev) => {
-          const byBatchId = new Map(
-            prev
-              .filter((c) => (c as Campaign & { batchCallId?: string }).batchCallId)
-              .map((c) => [(c as Campaign & { batchCallId?: string }).batchCallId!, c]),
-          );
-          const merged: Campaign[] = [...prev];
-          for (const b of batches) {
-            if (!b?.batch_call_id) continue;
-            const existing = byBatchId.get(b.batch_call_id);
-            const nextEntry: Campaign & { batchCallId?: string } = {
-              id: existing?.id ?? crypto.randomUUID(),
-              name: b.name || existing?.name || `Batch ${b.batch_call_id.slice(0, 8)}`,
-              agent: existing?.agent || b.from_number || "",
-              status: mapStatus(b.status),
-              leads: b.total_task_count ?? existing?.leads ?? 0,
-              calls: existing?.calls ?? 0,
-              description: existing?.description ?? "",
-              batchCallId: b.batch_call_id,
-            };
-            if (existing) {
-              const idx = merged.findIndex((c) => c.id === existing.id);
-              if (idx !== -1) merged[idx] = nextEntry;
-            } else {
-              merged.push(nextEntry);
-            }
-          }
-          return merged;
-        });
-      } catch {
-        // silent — leave local list intact
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const agentName = useMemo(() => {
+    const map = new Map(agents.map((a) => [a.id, a.name]));
+    return (id: string | null) => (id ? map.get(id) ?? "Unknown agent" : "No agent assigned");
+  }, [agents]);
 
   if (!user) return null;
 
@@ -172,40 +102,18 @@ const CampaignsPage = () => {
 
   const openCreate = () => navigate("/dashboard/campaigns/create");
 
-  const openEdit = (campaign: Campaign) => {
-    setEditing(campaign);
-    setForm({
-      name: campaign.name,
-      agent: campaign.agent,
-      status: campaign.status,
-      leads: campaign.leads,
-      calls: campaign.calls,
-      description: campaign.description,
-    });
-    setDialogOpen(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim()) return;
-    if (editing) {
-      setCampaigns((prev) =>
-        prev.map((c) => (c.id === editing.id ? { ...editing, ...form } : c))
-      );
-    } else {
-      setCampaigns((prev) => [
-        ...prev,
-        { id: crypto.randomUUID(), ...form },
-      ]);
-    }
-    setDialogOpen(false);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm("Delete this campaign?")) {
-      setCampaigns((prev) => prev.filter((c) => c.id !== id));
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this campaign and all its leads?")) return;
+    try {
+      await deleteCampaign(id);
+      setCampaigns((prev) => prev.filter((c) => c.campaign_id !== id));
+      toast.success("Campaign deleted.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete campaign.");
     }
   };
+
+  const statusOf = (c: CampaignRow) => (c.status as CampaignStatus) ?? "draft";
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
@@ -226,7 +134,7 @@ const CampaignsPage = () => {
                       "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors",
                       isActive
                         ? "bg-cyan-50 text-cyan-600"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                     )
                   }
                   end={item.href === "/dashboard"}
@@ -274,7 +182,6 @@ const CampaignsPage = () => {
       {/* Main */}
       <main className="flex-1 ml-[260px] min-h-screen">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Header */}
           <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
@@ -288,16 +195,6 @@ const CampaignsPage = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
-                <CreditCard className="h-4 w-4 text-cyan-500" />
-                0 Credits
-              </div>
-              <button
-                className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
-                aria-label="Settings"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
               <button
                 onClick={openCreate}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
@@ -308,15 +205,18 @@ const CampaignsPage = () => {
             </div>
           </div>
 
-          {/* Content */}
-          {campaigns.length === 0 ? (
+          {loading ? (
+            <div className="py-24 flex items-center justify-center text-slate-400">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : campaigns.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-soft py-24 flex flex-col items-center justify-center text-center px-6">
               <div className="h-16 w-16 rounded-full bg-gradient-to-br from-cyan-50 to-purple-50 flex items-center justify-center mb-4">
                 <Megaphone className="h-7 w-7 text-cyan-500" />
               </div>
               <h2 className="text-lg font-semibold text-slate-900">No Campaigns Yet</h2>
               <p className="text-sm text-slate-500 mt-1 max-w-sm">
-                You haven't created any outbound campaigns yet. Create your first campaign to start calling leads.
+                Create your first campaign to start calling leads.
               </p>
               <button
                 onClick={openCreate}
@@ -330,8 +230,9 @@ const CampaignsPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {campaigns.map((campaign) => (
                 <Card
-                  key={campaign.id}
-                  className="bg-white rounded-2xl border-slate-100 shadow-soft hover:shadow-md transition-shadow"
+                  key={campaign.campaign_id}
+                  className="bg-white rounded-2xl border-slate-100 shadow-soft hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/dashboard/campaigns/${campaign.campaign_id}`)}
                 >
                   <CardContent className="p-5">
                     <div className="flex items-start gap-3 mb-4">
@@ -340,17 +241,15 @@ const CampaignsPage = () => {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-slate-900 truncate">{campaign.name}</h3>
-                        <p className="text-xs text-slate-500 truncate">
-                          {campaign.agent || "No agent assigned"}
-                        </p>
+                        <p className="text-xs text-slate-500 truncate">{agentName(campaign.agent_id)}</p>
                       </div>
                       <span
                         className={cn(
-                          "px-2 py-0.5 rounded-full text-xs font-semibold",
-                          statusStyles[campaign.status]
+                          "px-2 py-0.5 rounded-full text-xs font-semibold capitalize",
+                          statusStyles[statusOf(campaign)],
                         )}
                       >
-                        {campaign.status}
+                        {statusOf(campaign)}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 mb-4">
@@ -358,35 +257,32 @@ const CampaignsPage = () => {
                         <p className="text-xs text-slate-500 mb-0.5">Leads</p>
                         <p className="text-lg font-semibold text-slate-900 flex items-center gap-1.5">
                           <Users className="h-4 w-4 text-slate-400" />
-                          {campaign.leads.toLocaleString()}
+                          {(campaign.total_leads ?? 0).toLocaleString()}
                         </p>
                       </div>
                       <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-xs text-slate-500 mb-0.5">Calls</p>
+                        <p className="text-xs text-slate-500 mb-0.5">Called</p>
                         <p className="text-lg font-semibold text-slate-900 flex items-center gap-1.5">
                           <Phone className="h-4 w-4 text-slate-400" />
-                          {campaign.calls.toLocaleString()}
+                          {(campaign.called_leads ?? 0).toLocaleString()}
                         </p>
                       </div>
                     </div>
-                    {campaign.description && (
-                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">{campaign.description}</p>
-                    )}
                     <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
                       <button
-                        onClick={() => setViewing(campaign)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/dashboard/campaigns/${campaign.campaign_id}`);
+                        }}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                       >
-                        <Eye className="h-3.5 w-3.5" /> View
+                        <Eye className="h-3.5 w-3.5" /> Open
                       </button>
                       <button
-                        onClick={() => openEdit(campaign)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-cyan-600 hover:bg-cyan-50 transition-colors"
-                      >
-                        <Pencil className="h-3.5 w-3.5" /> Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(campaign.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(campaign.campaign_id);
+                        }}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -399,132 +295,6 @@ const CampaignsPage = () => {
           )}
         </div>
       </main>
-
-      {/* Create / Edit dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit Campaign" : "New Campaign"}</DialogTitle>
-            <DialogDescription>
-              Set up a campaign, assign an agent, and upload your lead list.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Campaign Name</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Summer outreach"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="agent">Assigned Agent</Label>
-              <Input
-                id="agent"
-                value={form.agent}
-                onChange={(e) => setForm({ ...form, agent: e.target.value })}
-                placeholder="e.g. Sarah"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="leads">Lead Count</Label>
-                <Input
-                  id="leads"
-                  type="number"
-                  min={0}
-                  value={form.leads}
-                  onChange={(e) => setForm({ ...form, leads: Number(e.target.value) })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="calls">Calls Made</Label>
-                <Input
-                  id="calls"
-                  type="number"
-                  min={0}
-                  value={form.calls}
-                  onChange={(e) => setForm({ ...form, calls: Number(e.target.value) })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <select
-                id="status"
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value as Campaign["status"] })}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                <option value="Draft">Draft</option>
-                <option value="Active">Active</option>
-                <option value="Paused">Paused</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Describe the campaign goal..."
-                rows={3}
-              />
-            </div>
-            <DialogFooter>
-              <button
-                type="button"
-                onClick={() => setDialogOpen(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"
-              >
-                {editing ? "Save Changes" : "Create Campaign"}
-              </button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* View dialog */}
-      <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>{viewing?.name}</DialogTitle>
-            <DialogDescription>{viewing?.agent || "No agent assigned"}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 text-sm">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</p>
-                <p className="text-slate-900 mt-1">{viewing?.status}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Leads</p>
-                <p className="text-slate-900 mt-1">{viewing?.leads.toLocaleString()}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Calls</p>
-                <p className="text-slate-900 mt-1">{viewing?.calls.toLocaleString()}</p>
-              </div>
-            </div>
-            {viewing?.description && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Description</p>
-                <p className="text-slate-700 mt-1 whitespace-pre-wrap">{viewing.description}</p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

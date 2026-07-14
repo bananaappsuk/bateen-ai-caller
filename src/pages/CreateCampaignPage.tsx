@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { retellService, RetellApiError } from "@/services/retellService";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
+import { parseLeadsCsv } from "@/services/leadsCsv";
+import { createCampaign } from "@/services/campaignsService";
+import { insertLeads } from "@/services/leadsService";
+import { listAgents, syncAgentsFromRetell, type AgentRow } from "@/services/agentsService";
+import { getBillingAccount } from "@/services/creditsService";
+import { limitsFor, type PlanLimits } from "@/lib/plans";
+import { loadDynamicVars, saveDynamicVars } from "@/lib/dynamicVars";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -37,6 +43,7 @@ import {
   Upload,
   Download,
   FileSpreadsheet,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -51,18 +58,14 @@ const navItems = [
   { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
 ];
 
-const CAMPAIGNS_KEY = "ai_campaigns_list";
-const AGENTS_KEY = "linked_ai_agents_list";
-
 const COUNTRIES = [
-  { code: "US", label: "United States (+1)" },
-  { code: "GB", label: "United Kingdom (+44)" },
-  { code: "IN", label: "India (+91)" },
-  { code: "AU", label: "Australia (+61)" },
-  { code: "CA", label: "Canada (+1)" },
-  { code: "AE", label: "United Arab Emirates (+971)" },
-  { code: "SG", label: "Singapore (+65)" },
-  { code: "DE", label: "Germany (+49)" },
+  { code: "+44", label: "United Kingdom (+44)" },
+  { code: "+1", label: "United States / Canada (+1)" },
+  { code: "+91", label: "India (+91)" },
+  { code: "+61", label: "Australia (+61)" },
+  { code: "+971", label: "United Arab Emirates (+971)" },
+  { code: "+65", label: "Singapore (+65)" },
+  { code: "+49", label: "Germany (+49)" },
 ];
 
 const TEMPLATE_CSV =
@@ -70,47 +73,15 @@ const TEMPLATE_CSV =
 
 const defaultForm = {
   name: "",
-  agent: "",
-  maxRetries: 3,
-  retryDelay: 30,
-  qualificationCriteria: "",
+  agentId: "",
+  concurrency: 10,
+  maxAttempts: 3,
+  retryDelayMinutes: 60,
   interestedDescription: "",
   notInterestedDescription: "",
-  country: "US",
+  country: "+44",
   csvFileName: "",
-  csvLeadCount: 0,
 };
-
-type StoredAgent = {
-  id: string;
-  internalName?: string;
-  agentId?: string;
-  retellAgentId?: string;
-  phoneNumber?: string;
-};
-
-// Very small CSV parser: header row + comma-separated fields (no quoted-comma support).
-// Returns { tasks: [{ to_number, retell_llm_dynamic_variables }] } for Retell batch calls.
-function parseCsvTasks(csvText: string): { to_number: string; retell_llm_dynamic_variables: Record<string, string> }[] {
-  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length < 2) return [];
-  const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
-  const phoneIdx = header.findIndex((h) => h === "phone" || h === "to_number" || h === "number");
-  if (phoneIdx === -1) return [];
-  const tasks: { to_number: string; retell_llm_dynamic_variables: Record<string, string> }[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",").map((c) => c.trim());
-    const to = cols[phoneIdx];
-    if (!to || !/^\+[1-9]\d{6,14}$/.test(to)) continue;
-    const vars: Record<string, string> = {};
-    header.forEach((h, idx) => {
-      if (idx === phoneIdx) return;
-      if (cols[idx]) vars[h] = cols[idx];
-    });
-    tasks.push({ to_number: to, retell_llm_dynamic_variables: vars });
-  }
-  return tasks;
-}
 
 const CreateCampaignPage = () => {
   const navigate = useNavigate();
@@ -118,20 +89,54 @@ const CreateCampaignPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState(defaultForm);
   const [csvText, setCsvText] = useState<string>("");
+  const [csvSummary, setCsvSummary] = useState<{ valid: number; invalid: number } | null>(null);
+  const [agents, setAgents] = useState<AgentRow[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [limits, setLimits] = useState<PlanLimits>(() => limitsFor(null));
+  const [varsText, setVarsText] = useState(() =>
+    Object.entries(loadDynamicVars())
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n"),
+  );
+
+  const handleVarsChange = (text: string) => {
+    setVarsText(text);
+    const obj: Record<string, string> = {};
+    for (const line of text.split("\n")) {
+      const i = line.indexOf("=");
+      if (i > 0) {
+        const k = line.slice(0, i).trim();
+        const v = line.slice(i + 1).trim();
+        if (k) obj[k] = v;
+      }
+    }
+    saveDynamicVars(obj);
+  };
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
   }, [user, navigate]);
 
-  const availableAgents = useMemo<StoredAgent[]>(() => {
-    try {
-      const raw = localStorage.getItem(AGENTS_KEY);
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? (list as StoredAgent[]) : [];
-    } catch {
-      return [];
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Ensure the user's Retell agents are available locally.
+        await syncAgentsFromRetell().catch(() => undefined);
+        const list = await listAgents();
+        if (!cancelled) setAgents(list);
+        const acct = await getBillingAccount().catch(() => null);
+        if (!cancelled && acct) setLimits(limitsFor(acct.plan_tier));
+      } catch {
+        if (!cancelled) setAgents([]);
+      } finally {
+        if (!cancelled) setLoadingAgents(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!user) return null;
@@ -149,10 +154,13 @@ const CreateCampaignPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const text = await file.text();
-    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    const rows = Math.max(0, lines.length - 1); // exclude header
     setCsvText(text);
-    setForm((prev) => ({ ...prev, csvFileName: file.name, csvLeadCount: rows }));
+    const parsed = parseLeadsCsv(text);
+    setCsvSummary({ valid: parsed.leads.length, invalid: parsed.invalidCount });
+    setForm((prev) => ({ ...prev, csvFileName: file.name }));
+    if (!parsed.phoneColumn) {
+      toast.error("No phone column found. Include a 'phone' (or 'number') column.");
+    }
   };
 
   const handleDownloadTemplate = () => {
@@ -171,82 +179,47 @@ const CreateCampaignPage = () => {
     e.preventDefault();
     if (!form.name.trim() || submitting) return;
 
+    const parsed = csvText ? parseLeadsCsv(csvText) : null;
+    const leads = parsed?.leads ?? [];
+
+    if (leads.length > limits.maxLeadsPerUpload) {
+      toast.error(
+        `Your plan allows ${limits.maxLeadsPerUpload.toLocaleString()} leads per upload. Trim the CSV or upgrade your plan.`,
+      );
+      return;
+    }
+
     setSubmitting(true);
-
-    // Resolve the selected agent (form.agent stores the label).
-    const selectedAgent = availableAgents.find(
-      (a) => (a.internalName || a.agentId) === form.agent,
-    );
-    const fromNumber = selectedAgent?.phoneNumber?.trim();
-    const retellAgentId = selectedAgent?.retellAgentId;
-
-    let batchCallId: string | undefined;
-    let batchStatus: string | undefined;
-    let campaignStatus: "Draft" | "Active" = "Draft";
-    let errorMessage: string | undefined;
-
-    const tasks = csvText ? parseCsvTasks(csvText) : [];
-
-    if (tasks.length === 0) {
-      errorMessage = "No valid phone numbers found in CSV — campaign saved as Draft.";
-      toast.error(errorMessage);
-    } else if (!fromNumber) {
-      errorMessage = "Selected agent has no phone number — campaign saved as Draft.";
-      toast.error(errorMessage);
-    } else {
-      const loadingId = toast.loading(`Creating batch call for ${tasks.length} leads…`);
-      try {
-        const batch = await retellService.createBatchCall({
-          from_number: fromNumber,
-          name: form.name.trim(),
-          tasks,
-          ...(retellAgentId ? { override_agent_id: retellAgentId } : {}),
-        });
-        batchCallId = batch.batch_call_id;
-        batchStatus = batch.status;
-        campaignStatus = "Active";
-        toast.success(`Batch call created (${batchCallId}).`, { id: loadingId });
-      } catch (err) {
-        errorMessage =
-          err instanceof RetellApiError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : "Failed to create batch call.";
-        toast.error(errorMessage, { id: loadingId });
-      }
-    }
-
+    const loadingId = toast.loading("Creating campaign…");
     try {
-      const raw = localStorage.getItem(CAMPAIGNS_KEY);
-      const existing = raw ? JSON.parse(raw) : [];
-      const next = [
-        ...existing,
-        {
-          id: crypto.randomUUID(),
-          name: form.name.trim(),
-          agent: form.agent,
-          status: campaignStatus,
-          leads: form.csvLeadCount,
-          calls: 0,
-          description: form.qualificationCriteria,
-          maxRetries: form.maxRetries,
-          retryDelay: form.retryDelay,
-          interestedDescription: form.interestedDescription,
-          notInterestedDescription: form.notInterestedDescription,
-          country: form.country,
-          csvFileName: form.csvFileName,
-          batchCallId,
-          batchStatus,
-          errorMessage,
-        },
-      ];
-      localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
+      const campaign = await createCampaign({
+        name: form.name.trim(),
+        agent_id: form.agentId || null,
+        concurrency: Math.min(form.concurrency, limits.concurrency),
+        max_attempts: form.maxAttempts,
+        retry_delay_minutes: form.retryDelayMinutes,
+        interested_description: form.interestedDescription.trim() || null,
+        not_interested_description: form.notInterestedDescription.trim() || null,
+        country_code: form.country,
+        total_leads: leads.length,
+        status: "draft",
+      });
+
+      if (leads.length > 0) {
+        const inserted = await insertLeads(campaign.campaign_id, leads);
+        toast.success(
+          `Campaign created with ${inserted} lead${inserted === 1 ? "" : "s"}.`,
+          { id: loadingId },
+        );
+      } else {
+        toast.success("Campaign created (no leads yet).", { id: loadingId });
+      }
+      navigate(`/dashboard/campaigns/${campaign.campaign_id}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to create campaign.";
+      toast.error(msg, { id: loadingId });
+      setSubmitting(false);
     }
-    setSubmitting(false);
-    navigate("/dashboard/campaigns");
   };
 
   return (
@@ -268,7 +241,7 @@ const CreateCampaignPage = () => {
                       "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors",
                       isActive || item.href === "/dashboard/campaigns"
                         ? "bg-cyan-50 text-cyan-600"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                     )
                   }
                   end={item.href === "/dashboard"}
@@ -313,9 +286,8 @@ const CreateCampaignPage = () => {
         </div>
       </aside>
 
-      {/* Main — fixed viewport with sticky header + footer */}
+      {/* Main */}
       <main className="flex-1 ml-[260px] h-screen flex flex-col">
-        {/* Sticky page header */}
         <div className="shrink-0 bg-white border-b border-slate-100 px-6 sm:px-10 py-5">
           <div className="max-w-3xl mx-auto flex items-center gap-4">
             <button
@@ -334,12 +306,7 @@ const CreateCampaignPage = () => {
           </div>
         </div>
 
-        {/* Scrollable form area */}
-        <form
-          id="create-campaign-form"
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto"
-        >
+        <form id="create-campaign-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-6 sm:px-10 py-8 space-y-6">
             {/* Campaign Name */}
             <div className="space-y-2">
@@ -356,87 +323,71 @@ const CreateCampaignPage = () => {
             {/* Select Agent */}
             <div className="space-y-2">
               <Label htmlFor="agent">Select Agent</Label>
-              {availableAgents.length > 0 ? (
-                <Select
-                  value={form.agent}
-                  onValueChange={(v) => setForm({ ...form, agent: v })}
-                >
+              {loadingAgents ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Syncing agents from Retell…
+                </div>
+              ) : agents.length > 0 ? (
+                <Select value={form.agentId} onValueChange={(v) => setForm({ ...form, agentId: v })}>
                   <SelectTrigger id="agent">
                     <SelectValue placeholder="Choose an agent" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableAgents.map((a) => {
-                      const label = a.internalName || a.agentId || "Unnamed agent";
-                      return (
-                        <SelectItem key={a.id} value={label}>
-                          {label}
-                        </SelectItem>
-                      );
-                    })}
+                    {agents.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                        {a.phone_number ? ` · ${a.phone_number}` : " · no number"}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <>
-                  <Input
-                    id="agent"
-                    value={form.agent}
-                    onChange={(e) => setForm({ ...form, agent: e.target.value })}
-                    placeholder="e.g. Sarah"
-                  />
-                  <p className="text-xs text-slate-500">
-                    No agents found. Create one from the AI Agents page, or enter a name manually.
-                  </p>
-                </>
+                <p className="text-sm text-slate-500">
+                  No agents found. Create one on the AI Agents page first.
+                </p>
               )}
+              <p className="text-xs text-slate-500">
+                The campaign dials from the agent's assigned phone number.
+              </p>
             </div>
 
-            {/* Retries */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Concurrency + Retries */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="maxRetries">Max Retries</Label>
+                <Label htmlFor="concurrency">Concurrent Calls</Label>
                 <Input
-                  id="maxRetries"
+                  id="concurrency"
                   type="number"
-                  min={0}
-                  max={10}
-                  value={form.maxRetries}
-                  onChange={(e) =>
-                    setForm({ ...form, maxRetries: Number(e.target.value) })
-                  }
+                  min={1}
+                  max={50}
+                  value={form.concurrency}
+                  onChange={(e) => setForm({ ...form, concurrency: Number(e.target.value) })}
                 />
-                <p className="text-xs text-slate-500">
-                  Number of times to retry a lead if the call fails.
-                </p>
+                <p className="text-xs text-slate-500">Simultaneous calls.</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="retryDelay">Retry Delay (minutes)</Label>
+                <Label htmlFor="maxAttempts">Max Attempts</Label>
+                <Input
+                  id="maxAttempts"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={form.maxAttempts}
+                  onChange={(e) => setForm({ ...form, maxAttempts: Number(e.target.value) })}
+                />
+                <p className="text-xs text-slate-500">Retries per lead.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="retryDelay">Retry Delay (min)</Label>
                 <Input
                   id="retryDelay"
                   type="number"
-                  min={0}
-                  value={form.retryDelay}
-                  onChange={(e) =>
-                    setForm({ ...form, retryDelay: Number(e.target.value) })
-                  }
+                  min={1}
+                  value={form.retryDelayMinutes}
+                  onChange={(e) => setForm({ ...form, retryDelayMinutes: Number(e.target.value) })}
                 />
-                <p className="text-xs text-slate-500">
-                  Wait time between retry attempts.
-                </p>
+                <p className="text-xs text-slate-500">Wait between tries.</p>
               </div>
-            </div>
-
-            {/* AI Lead Qualification Criteria */}
-            <div className="space-y-2">
-              <Label htmlFor="qualification">AI Lead Qualification Criteria</Label>
-              <Textarea
-                id="qualification"
-                value={form.qualificationCriteria}
-                onChange={(e) =>
-                  setForm({ ...form, qualificationCriteria: e.target.value })
-                }
-                placeholder="Describe how the AI should evaluate and score each lead."
-                rows={4}
-              />
             </div>
 
             {/* Interested */}
@@ -445,10 +396,8 @@ const CreateCampaignPage = () => {
               <Textarea
                 id="interested"
                 value={form.interestedDescription}
-                onChange={(e) =>
-                  setForm({ ...form, interestedDescription: e.target.value })
-                }
-                placeholder="What signals mark a lead as interested?"
+                onChange={(e) => setForm({ ...form, interestedDescription: e.target.value })}
+                placeholder="What signals mark a lead as interested? (used by the AI to classify calls)"
                 rows={3}
               />
             </div>
@@ -459,9 +408,7 @@ const CreateCampaignPage = () => {
               <Textarea
                 id="notInterested"
                 value={form.notInterestedDescription}
-                onChange={(e) =>
-                  setForm({ ...form, notInterestedDescription: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, notInterestedDescription: e.target.value })}
                 placeholder="What signals mark a lead as not interested?"
                 rows={3}
               />
@@ -469,11 +416,8 @@ const CreateCampaignPage = () => {
 
             {/* Country */}
             <div className="space-y-2">
-              <Label htmlFor="country">Phone Number Country</Label>
-              <Select
-                value={form.country}
-                onValueChange={(v) => setForm({ ...form, country: v })}
-              >
+              <Label htmlFor="country">Default Country Code</Label>
+              <Select value={form.country} onValueChange={(v) => setForm({ ...form, country: v })}>
                 <SelectTrigger id="country">
                   <SelectValue />
                 </SelectTrigger>
@@ -485,8 +429,21 @@ const CreateCampaignPage = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Default call variables */}
+            <div className="space-y-2">
+              <Label htmlFor="dynvars">Default Call Variables</Label>
+              <Textarea
+                id="dynvars"
+                value={varsText}
+                onChange={(e) => handleVarsChange(e.target.value)}
+                placeholder={"company=Acme Ltd\noffer=20% discount"}
+                rows={3}
+              />
               <p className="text-xs text-slate-500">
-                Default country used to parse phone numbers in your CSV.
+                One per line as <code>key=value</code>. Usable as {"{{key}}"} in your agent script and
+                merged into every call (CSV columns override these).
               </p>
             </div>
 
@@ -504,8 +461,8 @@ const CreateCampaignPage = () => {
                         {form.csvFileName || "No file selected"}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {form.csvFileName
-                          ? `${form.csvLeadCount.toLocaleString()} leads detected`
+                        {csvSummary
+                          ? `${csvSummary.valid.toLocaleString()} valid · ${csvSummary.invalid} skipped`
                           : "CSV with name, phone, email, company columns."}
                       </p>
                     </div>
@@ -542,7 +499,6 @@ const CreateCampaignPage = () => {
           </div>
         </form>
 
-        {/* Sticky footer action bar */}
         <div className="shrink-0 bg-white border-t border-slate-100 px-6 sm:px-10 py-4">
           <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
             <Button type="button" variant="outline" onClick={handleCancel}>
@@ -551,9 +507,10 @@ const CreateCampaignPage = () => {
             <Button
               type="submit"
               form="create-campaign-form"
+              disabled={submitting}
               className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-95"
             >
-              Create Campaign
+              {submitting ? "Creating…" : "Create Campaign"}
             </Button>
           </div>
         </div>

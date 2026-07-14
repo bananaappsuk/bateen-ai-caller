@@ -28,6 +28,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
+import { planByTier } from "@/lib/plans";
+import { redirectToStripe, changePlan, previewChange, getBillingAccount } from "@/services/creditsService";
+import { toast } from "sonner";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
@@ -94,10 +97,71 @@ const ChoosePlanPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
   const [annual, setAnnual] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [credits, setCredits] = useState(0);
+  const [hasSubscription, setHasSubscription] = useState(false);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
   }, [user, navigate]);
+
+  useEffect(() => {
+    getBillingAccount()
+      .then((a) => {
+        setCredits(a?.credits ?? 0);
+        setHasSubscription(a?.subscription_status === "active" || a?.subscription_status === "trialing");
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const handleSubscribe = async (planName: string) => {
+    const tier = planName.toLowerCase();
+    const p = planByTier(tier);
+    const priceId = annual ? p?.priceYear : p?.priceMonth;
+    if (!priceId) {
+      toast.error("Billing isn't configured yet — set your Stripe price IDs (VITE_STRIPE_PRICE_*).");
+      return;
+    }
+    setBusy(tier);
+    try {
+      if (hasSubscription) {
+        // Existing subscriber → preview proration, confirm, then change in place.
+        const preview = await previewChange(priceId);
+        if (!preview.requiresCheckout) {
+          if (!window.confirm(preview.message || "Change to this plan?")) {
+            setBusy(null);
+            return;
+          }
+          const msg = await changePlan(priceId, tier, p?.credits ?? 0);
+          toast.success(msg);
+          setBusy(null);
+          setTimeout(() => navigate("/dashboard/settings?tab=Billing"), 1200);
+          return;
+        }
+        // No active subscription after all → fall through to checkout below.
+        await redirectToStripe("create-checkout-session", {
+          priceId,
+          tier,
+          monthlyCredits: p?.credits ?? 0,
+          trialDays: p?.hasTrial ? 7 : 0,
+          successUrl: `${window.location.origin}/dashboard?checkout=success`,
+          cancelUrl: `${window.location.origin}/plans?checkout=cancelled`,
+        });
+      } else {
+        await redirectToStripe("create-checkout-session", {
+          priceId,
+          tier,
+          monthlyCredits: p?.credits ?? 0,
+          trialDays: p?.hasTrial ? 7 : 0,
+          successUrl: `${window.location.origin}/dashboard?checkout=success`,
+          cancelUrl: `${window.location.origin}/plans?checkout=cancelled`,
+        });
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update plan.");
+      setBusy(null);
+    }
+  };
 
   if (!user) return null;
 
@@ -189,7 +253,7 @@ const ChoosePlanPage = () => {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
                 <CreditCard className="h-4 w-4 text-cyan-500" />
-                0 Credits
+                {credits.toLocaleString()} Credits
               </div>
               <button
                 onClick={() => navigate("/dashboard/settings?tab=Billing")}
@@ -278,14 +342,20 @@ const ChoosePlanPage = () => {
                 </div>
 
                 <button
+                  onClick={() => handleSubscribe(plan.name)}
+                  disabled={busy !== null}
                   className={cn(
-                    "w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all",
+                    "w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60",
                     plan.popular
                       ? "bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-95"
                       : "bg-slate-900 text-white hover:bg-slate-800"
                   )}
                 >
-                  {plan.cta}
+                  {busy === plan.name.toLowerCase()
+                    ? "Working…"
+                    : hasSubscription
+                      ? "Switch to this plan"
+                      : plan.cta}
                 </button>
               </div>
             ))}

@@ -10,19 +10,21 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
       agents: {
         Row: {
           created_at: string
+          deleted_in_retell: boolean
           error_message: string | null
           id: string
           language: string
           llm: string | null
           metadata: Json | null
           name: string
+          phone_number: string | null
           prompt: string | null
           retell_agent_id: string | null
           retell_agent_version: number | null
@@ -30,16 +32,19 @@ export type Database = {
           retell_voice_id: string | null
           status: string
           updated_at: string
+          user_id: string | null
           voice: string | null
         }
         Insert: {
           created_at?: string
+          deleted_in_retell?: boolean
           error_message?: string | null
           id?: string
           language?: string
           llm?: string | null
           metadata?: Json | null
           name: string
+          phone_number?: string | null
           prompt?: string | null
           retell_agent_id?: string | null
           retell_agent_version?: number | null
@@ -47,16 +52,19 @@ export type Database = {
           retell_voice_id?: string | null
           status?: string
           updated_at?: string
+          user_id?: string | null
           voice?: string | null
         }
         Update: {
           created_at?: string
+          deleted_in_retell?: boolean
           error_message?: string | null
           id?: string
           language?: string
           llm?: string | null
           metadata?: Json | null
           name?: string
+          phone_number?: string | null
           prompt?: string | null
           retell_agent_id?: string | null
           retell_agent_version?: number | null
@@ -64,7 +72,74 @@ export type Database = {
           retell_voice_id?: string | null
           status?: string
           updated_at?: string
+          user_id?: string | null
           voice?: string | null
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          detail: Json | null
+          id: string
+          target: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          target?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          target?: string | null
+        }
+        Relationships: []
+      }
+      billing_accounts: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          plan_tier: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
+          trial_ends_at: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          plan_tier?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          plan_tier?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -72,47 +147,223 @@ export type Database = {
         Row: {
           agent_id: string | null
           agent_name: string | null
+          call_successful: boolean | null
           call_type: string
+          campaign_id: string | null
+          cost_cents: number | null
           created_at: string
           direction: string
+          duration_ms: number | null
+          ended_at: string | null
           error_message: string | null
           from_number: string | null
+          has_transcript: boolean
           id: string
+          lead_name: string | null
           metadata: Json | null
+          recording_url: string | null
           retell_call_id: string | null
+          started_at: string | null
           status: string
+          summary: string | null
           to_number: string | null
+          transcript: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           agent_id?: string | null
           agent_name?: string | null
+          call_successful?: boolean | null
           call_type?: string
+          campaign_id?: string | null
+          cost_cents?: number | null
           created_at?: string
           direction?: string
+          duration_ms?: number | null
+          ended_at?: string | null
           error_message?: string | null
           from_number?: string | null
+          has_transcript?: boolean
           id?: string
+          lead_name?: string | null
           metadata?: Json | null
+          recording_url?: string | null
           retell_call_id?: string | null
+          started_at?: string | null
           status?: string
+          summary?: string | null
           to_number?: string | null
+          transcript?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           agent_id?: string | null
           agent_name?: string | null
+          call_successful?: boolean | null
           call_type?: string
+          campaign_id?: string | null
+          cost_cents?: number | null
           created_at?: string
           direction?: string
+          duration_ms?: number | null
+          ended_at?: string | null
           error_message?: string | null
           from_number?: string | null
+          has_transcript?: boolean
           id?: string
+          lead_name?: string | null
           metadata?: Json | null
+          recording_url?: string | null
           retell_call_id?: string | null
+          started_at?: string | null
           status?: string
+          summary?: string | null
           to_number?: string | null
+          transcript?: string | null
           updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calls_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["campaign_id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          agent_id: string | null
+          called_leads: number
+          calls_completed: number
+          campaign_id: string
+          concurrency: number
+          country_code: string | null
+          created_at: string
+          error_message: string | null
+          failed_calls: number
+          finished_at: string | null
+          interested_description: string | null
+          leads: Json | null
+          max_attempts: number
+          name: string
+          not_interested_description: string | null
+          notes: string | null
+          paused_reason: string | null
+          phone_number_id: string | null
+          retell_batch_call_id: string | null
+          retry_delay_minutes: number
+          scheduled_at: string | null
+          status: string
+          timezone: string | null
+          total_leads: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          called_leads?: number
+          calls_completed?: number
+          campaign_id?: string
+          concurrency?: number
+          country_code?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_calls?: number
+          finished_at?: string | null
+          interested_description?: string | null
+          leads?: Json | null
+          max_attempts?: number
+          name: string
+          not_interested_description?: string | null
+          notes?: string | null
+          paused_reason?: string | null
+          phone_number_id?: string | null
+          retell_batch_call_id?: string | null
+          retry_delay_minutes?: number
+          scheduled_at?: string | null
+          status?: string
+          timezone?: string | null
+          total_leads?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          called_leads?: number
+          calls_completed?: number
+          campaign_id?: string
+          concurrency?: number
+          country_code?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_calls?: number
+          finished_at?: string | null
+          interested_description?: string | null
+          leads?: Json | null
+          max_attempts?: number
+          name?: string
+          not_interested_description?: string | null
+          notes?: string | null
+          paused_reason?: string | null
+          phone_number_id?: string | null
+          retell_batch_call_id?: string | null
+          retry_delay_minutes?: number
+          scheduled_at?: string | null
+          status?: string
+          timezone?: string | null
+          total_leads?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_phone_number_id_fkey"
+            columns: ["phone_number_id"]
+            isOneToOne: false
+            referencedRelation: "phone_numbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consent_log: {
+        Row: {
+          campaign_id: string | null
+          consent_basis: string
+          created_at: string
+          id: string
+          lead_id: string | null
+          phone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          consent_basis?: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          phone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          consent_basis?: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          phone?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -143,6 +394,307 @@ export type Database = {
           message?: string
           name?: string
           phone?: string | null
+        }
+        Relationships: []
+      }
+      credit_orders: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          credits: number
+          id: string
+          status: string
+          stripe_session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          credits: number
+          id?: string
+          status?: string
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          credits?: number
+          id?: string
+          status?: string
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      credit_transactions: {
+        Row: {
+          cost_cents: number | null
+          created_at: string
+          credits: number | null
+          description: string | null
+          id: string
+          stripe_reference: string | null
+          tokens_used: number | null
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          cost_cents?: number | null
+          created_at?: string
+          credits?: number | null
+          description?: string | null
+          id?: string
+          stripe_reference?: string | null
+          tokens_used?: number | null
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          cost_cents?: number | null
+          created_at?: string
+          credits?: number | null
+          description?: string | null
+          id?: string
+          stripe_reference?: string | null
+          tokens_used?: number | null
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          attempt_count: number
+          called_at: string | null
+          campaign_id: string | null
+          created_at: string
+          custom_data: Json
+          id: string
+          lead_status: string | null
+          name: string | null
+          next_retry_at: string | null
+          phone: string
+          retell_call_id: string | null
+          sentiment: string | null
+          status: string
+          summary: string | null
+          transcript: string | null
+          unresponsive_at: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          called_at?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          custom_data?: Json
+          id?: string
+          lead_status?: string | null
+          name?: string | null
+          next_retry_at?: string | null
+          phone: string
+          retell_call_id?: string | null
+          sentiment?: string | null
+          status?: string
+          summary?: string | null
+          transcript?: string | null
+          unresponsive_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          called_at?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          custom_data?: Json
+          id?: string
+          lead_status?: string | null
+          name?: string | null
+          next_retry_at?: string | null
+          phone?: string
+          retell_call_id?: string | null
+          sentiment?: string | null
+          status?: string
+          summary?: string | null
+          transcript?: string | null
+          unresponsive_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["campaign_id"]
+          },
+        ]
+      }
+      phone_numbers: {
+        Row: {
+          assigned_agent_id: string | null
+          created_at: string
+          friendly_name: string | null
+          id: string
+          phone_number: string
+          provider: string | null
+          retell_phone_number_id: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          created_at?: string
+          friendly_name?: string | null
+          id?: string
+          phone_number: string
+          provider?: string | null
+          retell_phone_number_id: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          created_at?: string
+          friendly_name?: string | null
+          id?: string
+          phone_number?: string
+          provider?: string | null
+          retell_phone_number_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      signup_leads: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          phone: string | null
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
+      tenant_members: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          role: string
+          tenant_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          role?: string
+          tenant_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          role?: string
+          tenant_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_members_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          credit_pool: number
+          enabled_countries: string[]
+          id: string
+          name: string
+          owner_id: string | null
+          updated_at: string
+          white_label: boolean
+        }
+        Insert: {
+          created_at?: string
+          credit_pool?: number
+          enabled_countries?: string[]
+          id?: string
+          name: string
+          owner_id?: string | null
+          updated_at?: string
+          white_label?: boolean
+        }
+        Update: {
+          created_at?: string
+          credit_pool?: number
+          enabled_countries?: string[]
+          id?: string
+          name?: string
+          owner_id?: string | null
+          updated_at?: string
+          white_label?: boolean
+        }
+        Relationships: []
+      }
+      webhook_events: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          payload: Json | null
+          retell_call_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          retell_call_id?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          retell_call_id?: string | null
+          status?: string
         }
         Relationships: []
       }

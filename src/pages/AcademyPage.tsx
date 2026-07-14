@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
@@ -136,16 +136,14 @@ const AcademyPage = () => {
     navigate("/login", { replace: true });
   };
 
-  const filteredTutorials = useMemo(() => {
-    return tutorials.filter((t) => {
-      const matchesCategory = t.category === activeCategory;
-      const matchesSearch =
-        searchQuery.trim() === "" ||
-        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [tutorials, activeCategory, searchQuery]);
+  const filteredTutorials = tutorials.filter((t) => {
+    const matchesCategory = t.category === activeCategory;
+    const matchesSearch =
+      searchQuery.trim() === "" ||
+      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
