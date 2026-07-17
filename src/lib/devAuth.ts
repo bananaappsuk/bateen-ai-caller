@@ -66,6 +66,18 @@ export async function devSignOut(): Promise<void> {
   setCurrentUser(null);
 }
 
+export async function sendPasswordReset(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+  if (error) throw error;
+}
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
 // All authenticated users see the full nav; admin-only pages gate on role
 // separately. (Kept for signature compatibility with the dashboard pages.)
 export function canAccessRoute(_user: AppUser | null, _href: string): boolean {

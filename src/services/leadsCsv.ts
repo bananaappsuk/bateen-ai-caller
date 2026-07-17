@@ -12,9 +12,16 @@ export interface ParsedLead {
   customData: Record<string, string>;
 }
 
+export interface SkippedRow {
+  row: number; // 1-based, matching the row number a user sees in Excel (header = row 1)
+  value: string;
+  reason: string;
+}
+
 export interface ParsedLeadsResult {
   leads: ParsedLead[];
   invalidCount: number;
+  skipped: SkippedRow[];
   totalRows: number;
   headers: string[];
   phoneColumn: string | null;
@@ -27,17 +34,65 @@ const NAME_KEYS = [
   "name", "full_name", "fullname", "customer_name", "contact", "contact_name",
 ];
 const E164 = /^\+[1-9]\d{6,14}$/;
+// Excel's "General" number format renders/saves any long digit string (like a
+// phone number) as lossy scientific notation, e.g. 4.47887E+11 — the original
+// digits are gone for good; this can only be detected, never recovered.
+const SCIENTIFIC_NOTATION = /^\d(\.\d+)?e\+?\d+$/i;
 
-// Normalize a raw phone string to E.164, or null if it can't be. Strips spaces,
-// brackets, dashes and dots; converts a leading "00" international prefix to "+".
-export function normalizePhone(raw: string): string | null {
-  if (!raw) return null;
-  let p = raw.trim().replace(/[\s()\-.]/g, "");
-  if (p.startsWith("00")) p = "+" + p.slice(2);
-  return E164.test(p) ? p : null;
+export interface PhoneNormalizeResult {
+  phone: string | null;
+  reason?: string;
 }
 
-export function parseLeadsCsv(csvText: string): ParsedLeadsResult {
+// Normalize a raw phone string to E.164, with a human-readable reason when it
+// can't be. `defaultCountryCode` (e.g. "+44") is used as a fallback to fix
+// numbers that are missing their country code (a local "07700 900123" style
+// entry, or one with the country code but no leading "+").
+export function normalizePhoneDetailed(raw: string, defaultCountryCode?: string): PhoneNormalizeResult {
+  const original = (raw ?? "").trim();
+  if (!original) return { phone: null, reason: "Phone number is empty." };
+
+  // Unwrap the `="…"` text-escape some spreadsheets (and our own template)
+  // use to stop Excel from touching a numeric-looking value.
+  const formulaMatch = /^="(.*)"$/.exec(original);
+  let p = formulaMatch ? formulaMatch[1] : original;
+
+  if (SCIENTIFIC_NOTATION.test(p.replace(/\s/g, ""))) {
+    return {
+      phone: null,
+      reason:
+        `"${original}" looks like Excel converted this number to scientific notation — the original digits ` +
+        "are lost and can't be recovered. Format the phone column as Text in Excel (or open with a leading " +
+        "apostrophe, e.g. '+447700900123) before entering numbers, then re-upload.",
+    };
+  }
+
+  p = p.replace(/[\s()\-.']/g, "");
+  if (p.startsWith("00")) p = "+" + p.slice(2);
+  if (E164.test(p)) return { phone: p };
+
+  if (defaultCountryCode) {
+    const ccDigits = defaultCountryCode.replace(/^\+/, "");
+    const digits = p.replace(/\D/g, "");
+    if (digits) {
+      const candidate = digits.startsWith(ccDigits)
+        ? `+${digits}`
+        : `+${ccDigits}${digits.replace(/^0/, "")}`;
+      if (E164.test(candidate)) return { phone: candidate };
+    }
+  }
+
+  return {
+    phone: null,
+    reason: `"${original}" isn't a valid phone number. Use international format, e.g. +447700900123.`,
+  };
+}
+
+export function normalizePhone(raw: string, defaultCountryCode?: string): string | null {
+  return normalizePhoneDetailed(raw, defaultCountryCode).phone;
+}
+
+export function parseLeadsCsv(csvText: string, defaultCountryCode?: string): ParsedLeadsResult {
   const parsed = Papa.parse<Record<string, string>>(csvText, {
     header: true,
     skipEmptyLines: true,
@@ -50,13 +105,16 @@ export function parseLeadsCsv(csvText: string): ParsedLeadsResult {
   const rows = parsed.data ?? [];
 
   const leads: ParsedLead[] = [];
-  let invalidCount = 0;
+  const skipped: SkippedRow[] = [];
 
-  for (const row of rows) {
-    const phone = phoneColumn ? normalizePhone(row[phoneColumn] ?? "") : null;
+  rows.forEach((row, i) => {
+    const rawPhone = phoneColumn ? row[phoneColumn] ?? "" : "";
+    const { phone, reason } = phoneColumn
+      ? normalizePhoneDetailed(rawPhone, defaultCountryCode)
+      : { phone: null, reason: "No phone column found in this file." };
     if (!phone) {
-      invalidCount++;
-      continue;
+      skipped.push({ row: i + 2, value: rawPhone.trim(), reason: reason ?? "Invalid phone number." });
+      return;
     }
     const customData: Record<string, string> = {};
     for (const h of headers) {
@@ -66,7 +124,7 @@ export function parseLeadsCsv(csvText: string): ParsedLeadsResult {
     }
     const name = nameColumn ? (row[nameColumn] ?? "").trim() || null : null;
     leads.push({ name, phone, customData });
-  }
+  });
 
-  return { leads, invalidCount, totalRows: rows.length, headers, phoneColumn };
+  return { leads, invalidCount: skipped.length, skipped, totalRows: rows.length, headers, phoneColumn };
 }

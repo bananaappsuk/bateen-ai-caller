@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
-import { parseLeadsCsv } from "@/services/leadsCsv";
+import { parseLeadsCsv, type SkippedRow } from "@/services/leadsCsv";
 import { createCampaign } from "@/services/campaignsService";
 import { insertLeads } from "@/services/leadsService";
 import { listAgents, syncAgentsFromRetell, type AgentRow } from "@/services/agentsService";
@@ -44,6 +44,8 @@ import {
   Download,
   FileSpreadsheet,
   Loader2,
+  Info,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -68,8 +70,11 @@ const COUNTRIES = [
   { code: "+49", label: "Germany (+49)" },
 ];
 
+// Phone values are wrapped as ="…" — Excel treats that as a text formula
+// result and won't reformat it into scientific notation on open/save, unlike a
+// bare long digit string. The parser below unwraps this automatically.
 const TEMPLATE_CSV =
-  "name,phone,email,company\nJane Doe,+14155550101,jane@example.com,Acme Inc\nJohn Smith,+14155550102,john@example.com,Globex\n";
+  'name,phone,email,company\nJane Doe,="+14155550101",jane@example.com,Acme Inc\nJohn Smith,="+14155550102",john@example.com,Globex\n';
 
 const defaultForm = {
   name: "",
@@ -90,6 +95,8 @@ const CreateCampaignPage = () => {
   const [form, setForm] = useState(defaultForm);
   const [csvText, setCsvText] = useState<string>("");
   const [csvSummary, setCsvSummary] = useState<{ valid: number; invalid: number } | null>(null);
+  const [skippedRows, setSkippedRows] = useState<SkippedRow[]>([]);
+  const [showSkipped, setShowSkipped] = useState(false);
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -139,6 +146,16 @@ const CreateCampaignPage = () => {
     };
   }, []);
 
+  // Re-check skipped rows if the user changes the default country code after
+  // uploading — some "invalid" numbers are just missing their country code.
+  useEffect(() => {
+    if (!csvText) return;
+    const parsed = parseLeadsCsv(csvText, form.country);
+    setCsvSummary({ valid: parsed.leads.length, invalid: parsed.invalidCount });
+    setSkippedRows(parsed.skipped);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.country]);
+
   if (!user) return null;
 
   const visibleNav = navItems.filter((item) => canAccessRoute(user, item.href));
@@ -155,8 +172,10 @@ const CreateCampaignPage = () => {
     if (!file) return;
     const text = await file.text();
     setCsvText(text);
-    const parsed = parseLeadsCsv(text);
+    const parsed = parseLeadsCsv(text, form.country);
     setCsvSummary({ valid: parsed.leads.length, invalid: parsed.invalidCount });
+    setSkippedRows(parsed.skipped);
+    setShowSkipped(false);
     setForm((prev) => ({ ...prev, csvFileName: file.name }));
     if (!parsed.phoneColumn) {
       toast.error("No phone column found. Include a 'phone' (or 'number') column.");
@@ -179,7 +198,7 @@ const CreateCampaignPage = () => {
     e.preventDefault();
     if (!form.name.trim() || submitting) return;
 
-    const parsed = csvText ? parseLeadsCsv(csvText) : null;
+    const parsed = csvText ? parseLeadsCsv(csvText, form.country) : null;
     const leads = parsed?.leads ?? [];
 
     if (leads.length > limits.maxLeadsPerUpload) {
@@ -495,6 +514,44 @@ const CreateCampaignPage = () => {
                   </div>
                 </div>
               </div>
+
+              <div className="flex items-start gap-2 text-xs text-slate-500">
+                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <p>
+                  Opening this CSV in Excel? Format the phone column as Text before typing numbers into it
+                  (or prefix each number with an apostrophe, e.g. <code>'+447700900123</code>). Otherwise Excel
+                  can silently rewrite long phone numbers as scientific notation (e.g. <code>4.47887E+11</code>),
+                  which can't be recovered once saved.
+                </p>
+              </div>
+
+              {skippedRows.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowSkipped((v) => !v)}
+                    className="w-full flex items-center justify-between gap-2 text-left"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold text-amber-800">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      {skippedRows.length} row{skippedRows.length === 1 ? "" : "s"} skipped — why?
+                    </span>
+                    <span className="text-xs font-medium text-amber-700">
+                      {showSkipped ? "Hide" : "Show"}
+                    </span>
+                  </button>
+                  {showSkipped && (
+                    <ul className="mt-3 space-y-2 max-h-64 overflow-y-auto">
+                      {skippedRows.map((s, i) => (
+                        <li key={i} className="text-xs text-amber-800 border-t border-amber-100 pt-2 first:border-0 first:pt-0">
+                          <span className="font-semibold">Row {s.row}</span>
+                          {s.value ? <span className="font-mono"> ("{s.value}")</span> : null}: {s.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </form>

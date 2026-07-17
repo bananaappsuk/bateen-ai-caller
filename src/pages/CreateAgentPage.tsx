@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { retellService, RetellApiError, type RetellVoice } from "@/services/retellService";
 import { createAgent, listAgents } from "@/services/agentsService";
 import { getBillingAccount } from "@/services/creditsService";
-import { buildAgentTools, buildToolGuidance, loadIntegrations } from "@/lib/agentTools";
+import { buildAgentTools, buildDeliveryGuidance, buildToolGuidance, loadIntegrations } from "@/lib/agentTools";
 import { limitsFor } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
@@ -211,7 +211,7 @@ const CreateAgentPage = () => {
       // 1. Retell LLM (with tools + tool guidance appended to the script).
       const llm = await retellService.createLlm({
         model: LLM_MODEL,
-        general_prompt: prompt + buildToolGuidance(toolConfig),
+        general_prompt: prompt + buildDeliveryGuidance() + buildToolGuidance(toolConfig),
         ...(tools.length ? { general_tools: tools } : {}),
       });
 

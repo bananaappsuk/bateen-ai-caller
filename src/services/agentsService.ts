@@ -39,6 +39,23 @@ export async function deleteAgent(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export interface PhoneNumberLinkStatus {
+  phone_number: string;
+  agent_id: string;
+  agent_name: string;
+  has_active_campaign: boolean;
+}
+
+// Numbers are a shared pool across every tenant, not per-user — this reads
+// (name only, via a SECURITY DEFINER RPC) which agent currently holds each
+// number and whether it's mid-campaign, regardless of who owns that agent.
+export async function getPhoneNumberLinkStatus(numbers: string[]): Promise<PhoneNumberLinkStatus[]> {
+  if (numbers.length === 0) return [];
+  const { data, error } = await supabase.rpc("phone_number_link_status", { numbers });
+  if (error) throw error;
+  return data ?? [];
+}
+
 // Pull the user's Retell agents into the local `agents` table (matched by
 // retell_agent_id), mapping each one's outbound caller-ID from Retell's
 // list-phone-numbers. Mirrors VocalMax's agent sync.
@@ -75,12 +92,18 @@ export async function syncAgentsFromRetell(): Promise<{ synced: number }> {
       deleted_in_retell: false,
     };
     const cur = byRetellId.get(ra.agent_id);
-    if (cur) {
-      await updateAgent(cur.id, row);
-    } else {
-      await createAgent(row);
+    try {
+      if (cur) {
+        await updateAgent(cur.id, row);
+      } else {
+        await createAgent(row);
+      }
+      synced++;
+    } catch {
+      // Retell is a shared account across tenants — an agent belonging to
+      // another user (or a phone number they hold) will conflict here. Skip
+      // it and keep syncing the rest instead of aborting the whole pass.
     }
-    synced++;
   }
   return { synced };
 }

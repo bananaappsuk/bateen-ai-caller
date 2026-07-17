@@ -1,7 +1,10 @@
 // Retell AI proxy edge function.
 // All Retell API calls from the frontend go through this function so the
 // RETELL_API_KEY never leaves the server.
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 const DEFAULT_RETELL_BASE_URL = "https://api.retellai.com";
 

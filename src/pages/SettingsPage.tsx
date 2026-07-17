@@ -32,7 +32,6 @@ import {
   ChevronsUpDown,
   CreditCard,
   Settings,
-  AlertTriangle,
   Trash2,
   ShieldOff,
   Info,
@@ -55,6 +54,7 @@ import { getBillingAccount, redirectToStripe } from "@/services/creditsService";
 import { planByTier } from "@/lib/plans";
 import { loadIntegrations, saveIntegrations } from "@/lib/agentTools";
 import { supabase } from "@/integrations/supabase/client";
+import { getNotificationSettings, saveNotificationSettings } from "@/services/notificationSettingsService";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
@@ -77,7 +77,6 @@ const tabs = [
 type Tab = (typeof tabs)[number];
 
 const PROFILE_KEY = "ai_account_profile";
-const NOTIFICATIONS_KEY = "ai_notifications_settings";
 const DNC_KEY = "ai_dnc_list";
 
 type DncEntry = { number: string; addedAt: string };
@@ -202,21 +201,27 @@ const SettingsPage = () => {
       if (raw) setProfile(JSON.parse(raw));
       else setProfile({ fullName: user.name, companyName: "" });
 
-      const rawNotifications = localStorage.getItem(NOTIFICATIONS_KEY);
-      if (rawNotifications) {
-        const parsed = JSON.parse(rawNotifications);
-        setNotifications((prev) => ({
-          ...prev,
-          ...parsed,
-          email: parsed.email || user.email,
-        }));
-      }
       const rawDnc = localStorage.getItem(DNC_KEY);
       if (rawDnc) setDncList(JSON.parse(rawDnc));
     } catch {
       /* noop */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    getNotificationSettings()
+      .then((s) => {
+        if (!s) return;
+        setNotifications({
+          email: s.recipient_email || user?.email || "",
+          enableEmail: s.enable_email,
+          interestedLead: s.interested_lead,
+          callbackRequested: s.callback_requested,
+        });
+      })
+      .catch(() => undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -284,10 +289,19 @@ const SettingsPage = () => {
     toast({ title: "Profile updated", description: "Your changes have been saved." });
   };
 
-  const handleSaveNotifications = (e: React.FormEvent) => {
+  const handleSaveNotifications = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
-    toast({ title: "Notifications saved", description: "Your email alert preferences have been updated." });
+    try {
+      await saveNotificationSettings({
+        enable_email: notifications.enableEmail,
+        recipient_email: notifications.email.trim(),
+        interested_lead: notifications.interestedLead,
+        callback_requested: notifications.callbackRequested,
+      });
+      toast({ title: "Notifications saved", description: "Your email alert preferences have been updated." });
+    } catch (err) {
+      toast({ title: "Failed to save notifications", description: err instanceof Error ? err.message : "" });
+    }
   };
 
   const persistDnc = (list: DncEntry[]) => {
@@ -425,7 +439,7 @@ const SettingsPage = () => {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
                 <CreditCard className="h-4 w-4 text-cyan-500" />
-                0 Credits
+                {billing.credits.toLocaleString()} Credits
               </div>
               <button
                 onClick={() => changeTab("Billing")}
@@ -605,17 +619,6 @@ const SettingsPage = () => {
                   <p className="text-sm text-slate-500 mt-1">
                     Choose how and when you want to be alerted.
                   </p>
-                </div>
-
-                {/* Maintenance Banner */}
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-800">Under Maintenance</p>
-                    <p className="text-sm text-amber-700 mt-0.5">
-                      We're currently investigating an issue with email notifications. This feature will be available again shortly.
-                    </p>
-                  </div>
                 </div>
 
                 {/* Email Alerts Card */}

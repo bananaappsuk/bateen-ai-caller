@@ -3,11 +3,10 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { RetellWebClient } from "retell-client-js-sdk";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
-import { retellService, RetellApiError, type RetellPhoneNumber } from "@/services/retellService";
+import { retellService, RetellApiError } from "@/services/retellService";
 import {
   listAgents,
   syncAgentsFromRetell,
-  updateAgent,
   deleteAgent as deleteAgentRow,
   type AgentRow,
 } from "@/services/agentsService";
@@ -29,13 +28,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   LayoutDashboard,
@@ -56,6 +48,7 @@ import {
   RefreshCw,
   PhoneOff,
   Phone,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -78,9 +71,6 @@ const AIAgentsPage = () => {
   const [syncing, setSyncing] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [activeCallId, setActiveCallId] = useState<string | null>(null);
-  const [assignFor, setAssignFor] = useState<AgentRow | null>(null);
-  const [phoneNumbers, setPhoneNumbers] = useState<RetellPhoneNumber[]>([]);
-  const [selectedNumber, setSelectedNumber] = useState<string>("");
   const retellClientRef = useRef<RetellWebClient | null>(null);
   const activeAgentIdRef = useRef<string | null>(null);
 
@@ -119,7 +109,6 @@ const AIAgentsPage = () => {
       }
       retellClientRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!user) return null;
@@ -213,30 +202,6 @@ const AIAgentsPage = () => {
       toast.success("Agent deleted.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete agent.");
-    }
-  };
-
-  const openAssign = async (agent: AgentRow) => {
-    setAssignFor(agent);
-    setSelectedNumber(agent.phone_number ?? "");
-    try {
-      setPhoneNumbers(await retellService.listPhoneNumbers());
-    } catch {
-      setPhoneNumbers([]);
-    }
-  };
-
-  const handleAssignNumber = async () => {
-    if (!assignFor) return;
-    try {
-      await updateAgent(assignFor.id, { phone_number: selectedNumber || null });
-      setAgents((prev) =>
-        prev.map((a) => (a.id === assignFor.id ? { ...a, phone_number: selectedNumber || null } : a)),
-      );
-      setAssignFor(null);
-      toast.success("Phone number assigned.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to assign number.");
     }
   };
 
@@ -374,7 +339,10 @@ const AIAgentsPage = () => {
                         {agent.phone_number ? (
                           agent.phone_number
                         ) : (
-                          <button onClick={() => openAssign(agent)} className="text-cyan-600 hover:underline">
+                          <button
+                            onClick={() => navigate(`/ai-agents/${agent.id}/number`)}
+                            className="text-cyan-600 hover:underline"
+                          >
                             Assign a number
                           </button>
                         )}
@@ -383,17 +351,24 @@ const AIAgentsPage = () => {
                         <div className="text-xs text-amber-600">Removed in Retell</div>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                    <div className="grid grid-cols-2 gap-1 pt-3 border-t border-slate-100">
                       <button
-                        onClick={() => openAssign(agent)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                        onClick={() => navigate(`/ai-agents/${agent.id}/edit`)}
+                        disabled={!agent.retell_agent_id}
+                        className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40"
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Edit
+                      </button>
+                      <button
+                        onClick={() => navigate(`/ai-agents/${agent.id}/number`)}
+                        className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                       >
                         <Phone className="h-3.5 w-3.5" /> Number
                       </button>
                       <button
                         onClick={() => handleTest(agent)}
                         disabled={testingId !== null && testingId !== agent.id}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-cyan-600 hover:bg-cyan-50 transition-colors disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-cyan-600 hover:bg-cyan-50 transition-colors disabled:opacity-50"
                       >
                         {testingId === agent.id ? (
                           <><Loader2 className="h-3.5 w-3.5 animate-spin" /> …</>
@@ -405,7 +380,7 @@ const AIAgentsPage = () => {
                       </button>
                       <button
                         onClick={() => handleDelete(agent)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Delete
                       </button>
@@ -417,46 +392,6 @@ const AIAgentsPage = () => {
           )}
         </div>
       </main>
-
-      {/* Assign number dialog */}
-      <Dialog open={!!assignFor} onOpenChange={(o) => !o && setAssignFor(null)}>
-        <DialogContent className="sm:max-w-[440px]">
-          <DialogHeader>
-            <DialogTitle>Assign Phone Number</DialogTitle>
-            <DialogDescription>
-              Choose a Retell number for {assignFor?.name} to dial from.
-            </DialogDescription>
-          </DialogHeader>
-          {phoneNumbers.length === 0 ? (
-            <p className="text-sm text-slate-500">No phone numbers found on your Retell account.</p>
-          ) : (
-            <Select value={selectedNumber} onValueChange={setSelectedNumber}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a number" />
-              </SelectTrigger>
-              <SelectContent>
-                {phoneNumbers.map((p) => (
-                  <SelectItem key={p.phone_number} value={p.phone_number}>
-                    {p.phone_number_pretty ?? p.phone_number}
-                    {p.nickname ? ` · ${p.nickname}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignFor(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAssignNumber}
-              className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-95"
-            >
-              Assign
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Active call indicator */}
       <Dialog open={!!activeCallId} onOpenChange={(o) => !o && stopActiveCall()}>

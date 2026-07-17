@@ -24,7 +24,11 @@ Deno.serve(async (req) => {
       "Write a natural, warm, concise system prompt/script the agent will follow. " +
       "Include: a short friendly opener that discloses it's an AI if asked, one qualifying question, " +
       "how to handle interest / objections / not-interested, and a clear call-to-action toward the goal. " +
-      "Keep it conversational and under ~250 words. Return ONLY the script text, no preamble.";
+      "Keep it conversational and under ~250 words. " +
+      "Write it as plain instructions/example lines only — never as a dialogue script with speaker labels " +
+      '(e.g. do not write "Mia: \\"...\\"") and never wrap lines in quotation marks, since the agent will ' +
+      "speak that formatting out loud verbatim. Mention the agent's own name only in the opening line, not " +
+      "in every example line. Return ONLY the script text, no preamble.";
     const user = [
       `Business: ${businessName || "(unspecified)"}`,
       `What they do: ${businessDescription || "(unspecified)"}`,

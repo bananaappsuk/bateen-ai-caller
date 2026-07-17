@@ -61,14 +61,38 @@ async function classifyTranscript(
   }
 }
 
+async function resolveHotLeadRecipient(
+  supabase: SupabaseClient,
+  userId: string | null,
+  label: Classification,
+): Promise<string | null> {
+  if (userId) {
+    const { data } = await supabase
+      .from("notification_settings")
+      .select("enable_email,recipient_email,interested_lead,callback_requested")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (data) {
+      if (!data.enable_email || !data.recipient_email) return null;
+      if (label === "Interested" && !data.interested_lead) return null;
+      if (label === "Requested Callback" && !data.callback_requested) return null;
+      return data.recipient_email;
+    }
+  }
+  // No per-user preference saved yet — fall back to the env secret.
+  return Deno.env.get("HOT_LEAD_EMAIL") ?? null;
+}
+
 async function sendHotLeadEmail(
-  lead: { id: string; name: string | null; phone: string },
+  supabase: SupabaseClient,
+  lead: { id: string; name: string | null; phone: string; user_id: string | null },
   label: Classification,
 ): Promise<void> {
   const host = Deno.env.get("SMTP_HOST");
-  const to = Deno.env.get("HOT_LEAD_EMAIL");
-  if (!host || !to) return;
+  if (!host) return;
   if (label !== "Interested" && label !== "Requested Callback") return;
+  const to = await resolveHotLeadRecipient(supabase, lead.user_id, label);
+  if (!to) return;
 
   const port = Number(Deno.env.get("SMTP_PORT") || "587");
   const username = Deno.env.get("SMTP_EMAIL_USER") || Deno.env.get("SMTP_USER") || "";
@@ -137,6 +161,6 @@ export async function classifyAndNotify(
 
   const label = await classifyTranscript(lead.transcript ?? "", interested, notInterested);
   await supabase.from("leads").update({ lead_status: label }).eq("id", leadId);
-  await sendHotLeadEmail({ id: lead.id, name: lead.name, phone: lead.phone }, label);
+  await sendHotLeadEmail(supabase, { id: lead.id, name: lead.name, phone: lead.phone, user_id: lead.user_id ?? null }, label);
   return label;
 }

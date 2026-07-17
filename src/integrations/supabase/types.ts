@@ -534,6 +534,39 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          callback_requested: boolean
+          created_at: string
+          enable_email: boolean
+          id: string
+          interested_lead: boolean
+          recipient_email: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          callback_requested?: boolean
+          created_at?: string
+          enable_email?: boolean
+          id?: string
+          interested_lead?: boolean
+          recipient_email?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          callback_requested?: boolean
+          created_at?: string
+          enable_email?: boolean
+          id?: string
+          interested_lead?: boolean
+          recipient_email?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       phone_numbers: {
         Row: {
           assigned_agent_id: string | null
@@ -703,7 +736,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      phone_number_link_status: {
+        Args: { numbers: string[] }
+        Returns: {
+          phone_number: string
+          agent_id: string
+          agent_name: string
+          has_active_campaign: boolean
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

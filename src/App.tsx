@@ -8,11 +8,14 @@ import Index from "./pages/Index.tsx";
 import ContactPage from "./pages/ContactPage.tsx";
 import FAQPage from "./pages/FAQPage.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
 import OnboardingPage from "./pages/OnboardingPage.tsx";
 import DashboardPage from "./pages/DashboardPage.tsx";
 import AIAgentsPage from "./pages/AIAgentsPage.tsx";
 import CreateAgentPage from "./pages/CreateAgentPage.tsx";
+import EditAgentPage from "./pages/EditAgentPage.tsx";
+import LinkNumberPage from "./pages/LinkNumberPage.tsx";
 import CampaignsPage from "./pages/CampaignsPage.tsx";
 import CreateCampaignPage from "./pages/CreateCampaignPage.tsx";
 import CampaignDetailPage from "./pages/CampaignDetailPage.tsx";
@@ -45,6 +48,7 @@ const App = () => (
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/finish-registration" element={<Navigate to="/onboarding" replace />} />
@@ -54,8 +58,12 @@ const App = () => (
             <Route path="/dashboard" element={P(<DashboardPage />)} />
             <Route path="/ai-agents" element={P(<AIAgentsPage />)} />
             <Route path="/ai-agents/create" element={P(<CreateAgentPage />)} />
+            <Route path="/ai-agents/:id/edit" element={P(<EditAgentPage />)} />
+            <Route path="/ai-agents/:id/number" element={P(<LinkNumberPage />)} />
             <Route path="/dashboard/agents" element={P(<AIAgentsPage />)} />
             <Route path="/dashboard/agents/create" element={P(<CreateAgentPage />)} />
+            <Route path="/dashboard/agents/:id/edit" element={P(<EditAgentPage />)} />
+            <Route path="/dashboard/agents/:id/number" element={P(<LinkNumberPage />)} />
             <Route path="/campaigns" element={P(<CampaignsPage />)} />
             <Route path="/campaigns/create" element={P(<CreateCampaignPage />)} />
             <Route path="/campaigns/:id" element={P(<CampaignDetailPage />)} />

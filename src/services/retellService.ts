@@ -312,6 +312,23 @@ export async function listPhoneNumbers(): Promise<RetellPhoneNumber[]> {
   return Array.isArray(res) ? res : (res.items ?? []);
 }
 
+// Binds (or releases, with an empty agentId) a number's inbound/outbound agent
+// on Retell's own side — the old flat inbound_agent_id/outbound_agent_id fields
+// are deprecated; Retell now takes a weighted agent list per direction. Without
+// this, our local `agents.phone_number` link gets silently reverted the next
+// time syncAgentsFromRetell() reads Retell's (unchanged) binding.
+export async function setPhoneNumberAgent(
+  phoneNumber: string,
+  agent: { agentId: string; agentVersion?: number | null } | null,
+): Promise<RetellPhoneNumber> {
+  const agents = agent ? [{ agent_id: agent.agentId, agent_version: agent.agentVersion ?? 0, weight: 1 }] : [];
+  return callRetell<RetellPhoneNumber>({
+    path: `/update-phone-number/${encodeURIComponent(phoneNumber)}`,
+    method: "PATCH",
+    body: { inbound_agents: agents, outbound_agents: agents },
+  });
+}
+
 // ---------- LLM read/update ----------
 
 export function getLlm(llmId: string): Promise<RetellLlm> {
@@ -343,6 +360,7 @@ export const retellService = {
   listAgents,
   listVoices,
   listPhoneNumbers,
+  setPhoneNumberAgent,
   getLlm,
   updateLlm,
   createWebCall,
