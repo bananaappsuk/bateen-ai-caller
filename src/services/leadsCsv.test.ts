@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import * as XLSX from "xlsx";
-import { parseLeadsCsv, normalizePhone, normalizePhoneDetailed, fileToCsvText } from "./leadsCsv";
+import {
+  parseLeadsCsv,
+  normalizePhone,
+  normalizePhoneDetailed,
+  fileToCsvText,
+  buildTemplateCsv,
+  buildTemplateXlsx,
+} from "./leadsCsv";
 
 describe("normalizePhone", () => {
   it("accepts E.164 and strips formatting", () => {
@@ -141,5 +148,27 @@ describe("flexible phone header matching", () => {
     const r = parseLeadsCsv(`name,${header}\nJane,+14155550101\n`);
     expect(r.phoneColumn).not.toBeNull();
     expect(r.leads).toHaveLength(1);
+  });
+});
+
+describe("downloadable templates round-trip", () => {
+  it("CSV template parses back into 2 valid leads", () => {
+    const r = parseLeadsCsv(buildTemplateCsv());
+    expect(r.phoneColumn).toBe("phone");
+    expect(r.invalidCount).toBe(0);
+    expect(r.leads).toHaveLength(2);
+    expect(r.leads[0]).toMatchObject({ name: "Jane Doe", phone: "+14155550101" });
+    expect(r.leads[1].phone).toBe("+14155550102");
+  });
+
+  it("Excel template parses back into 2 valid leads", async () => {
+    const file = new File([buildTemplateXlsx()], "campaign-leads-template.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const r = parseLeadsCsv(await fileToCsvText(file));
+    expect(r.phoneColumn).toBe("phone");
+    expect(r.invalidCount).toBe(0);
+    expect(r.leads).toHaveLength(2);
+    expect(r.leads.map((l) => l.phone)).toEqual(["+14155550101", "+14155550102"]);
   });
 });

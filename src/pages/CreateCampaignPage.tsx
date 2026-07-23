@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
-import { parseLeadsCsv, fileToCsvText, type SkippedRow } from "@/services/leadsCsv";
+import {
+  parseLeadsCsv,
+  fileToCsvText,
+  buildTemplateCsv,
+  buildTemplateXlsx,
+  type SkippedRow,
+} from "@/services/leadsCsv";
 import { createCampaign } from "@/services/campaignsService";
 import { insertLeads } from "@/services/leadsService";
 import { listAgents, syncAgentsFromRetell, type AgentRow } from "@/services/agentsService";
@@ -69,12 +75,6 @@ const COUNTRIES = [
   { code: "+65", label: "Singapore (+65)" },
   { code: "+49", label: "Germany (+49)" },
 ];
-
-// Phone values are wrapped as ="…" — Excel treats that as a text formula
-// result and won't reformat it into scientific notation on open/save, unlike a
-// bare long digit string. The parser below unwraps this automatically.
-const TEMPLATE_CSV =
-  'name,phone,email,company\nJane Doe,="+14155550101",jane@example.com,Acme Inc\nJohn Smith,="+14155550102",john@example.com,Globex\n';
 
 const defaultForm = {
   name: "",
@@ -193,16 +193,31 @@ const CreateCampaignPage = () => {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    const blob = new Blob([TEMPLATE_CSV], { type: "text/csv;charset=utf-8;" });
+  const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "campaign-leads-template.csv";
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadTemplate = () => {
+    downloadBlob(
+      new Blob([buildTemplateCsv()], { type: "text/csv;charset=utf-8;" }),
+      "campaign-leads-template.csv",
+    );
+  };
+
+  const handleDownloadTemplateXlsx = () => {
+    downloadBlob(
+      new Blob([buildTemplateXlsx()], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      "campaign-leads-template.xlsx",
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -521,6 +536,15 @@ const CreateCampaignPage = () => {
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Template CSV
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleDownloadTemplateXlsx}
+                      className="text-cyan-600 hover:text-cyan-700"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Template Excel
                     </Button>
                   </div>
                 </div>

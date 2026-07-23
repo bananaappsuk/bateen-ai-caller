@@ -100,6 +100,46 @@ export function normalizePhone(raw: string, defaultCountryCode?: string): string
   return normalizePhoneDetailed(raw, defaultCountryCode).phone;
 }
 
+// ---------- Lead-list templates ----------
+// Single source of truth for the downloadable template, so what we hand out is
+// guaranteed to parse back in (covered by a round-trip test).
+export const TEMPLATE_HEADERS = ["name", "phone", "email", "company"] as const;
+export const TEMPLATE_ROWS: string[][] = [
+  ["Jane Doe", "+14155550101", "jane@example.com", "Acme Inc"],
+  ["John Smith", "+14155550102", "john@example.com", "Globex"],
+];
+
+// CSV template. Phone values use Excel's `="…"` text escape so that opening the
+// file in Excel doesn't treat a leading "+" as a formula or reformat the number;
+// our parser unwraps it on the way back in. A BOM keeps Excel in UTF-8.
+export function buildTemplateCsv(): string {
+  const lines = [
+    TEMPLATE_HEADERS.join(","),
+    ...TEMPLATE_ROWS.map(([name, phone, email, company]) =>
+      [name, `="${phone}"`, email, company].join(","),
+    ),
+  ];
+  return "﻿" + lines.join("\n") + "\n";
+}
+
+// Excel template. Phone cells are written as text cells, so Excel shows
+// +447700900123 exactly and never rewrites it as scientific notation.
+export function buildTemplateXlsx(): ArrayBuffer {
+  const sheet = XLSX.utils.aoa_to_sheet([[...TEMPLATE_HEADERS], ...TEMPLATE_ROWS]);
+  // Force the phone column (B) to text so Excel preserves the leading "+".
+  TEMPLATE_ROWS.forEach((_, i) => {
+    const ref = `B${i + 2}`;
+    if (sheet[ref]) {
+      sheet[ref].t = "s";
+      sheet[ref].z = "@";
+    }
+  });
+  sheet["!cols"] = [{ wch: 16 }, { wch: 18 }, { wch: 24 }, { wch: 16 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheet, "Leads");
+  return XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+}
+
 const SPREADSHEET_RE = /\.(xlsx|xlsm|xlsb|xls|ods)$/i;
 
 // Read an uploaded lead list into CSV text. Excel/ODS workbooks are binary (a
