@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseLeadsCsv, normalizePhone, normalizePhoneDetailed } from "./leadsCsv";
+import * as XLSX from "xlsx";
+import { parseLeadsCsv, normalizePhone, normalizePhoneDetailed, fileToCsvText } from "./leadsCsv";
 
 describe("normalizePhone", () => {
   it("accepts E.164 and strips formatting", () => {
@@ -93,5 +94,52 @@ describe("parseLeadsCsv", () => {
       phone: "+447700900123",
       customData: { customer_name: "Alice" },
     });
+  });
+});
+
+describe("Excel (.xlsx) uploads", () => {
+  // Build a real .xlsx workbook in memory, exactly like Excel would save one.
+  const makeXlsx = (rows: string[][]): File => {
+    const sheet = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet, "Sheet1");
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+    return new File([buf], "leads.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+  };
+
+  it("parses a real .xlsx workbook (was previously read as binary garbage)", async () => {
+    const file = makeXlsx([
+      ["Name", "Phone Number", "Email"],
+      ["Jane Doe", "+14155550101", "jane@example.com"],
+      ["John Smith", "+14155550102", "john@example.com"],
+    ]);
+    const text = await fileToCsvText(file);
+    const r = parseLeadsCsv(text);
+    expect(r.phoneColumn).toBe("phone number");
+    expect(r.leads).toHaveLength(2);
+    expect(r.leads[0]).toMatchObject({ name: "Jane Doe", phone: "+14155550101" });
+  });
+
+  it("still reads plain .csv files unchanged", async () => {
+    const file = new File(["name,phone\nJane,+14155550101\n"], "leads.csv", { type: "text/csv" });
+    const r = parseLeadsCsv(await fileToCsvText(file));
+    expect(r.leads).toHaveLength(1);
+  });
+});
+
+describe("flexible phone header matching", () => {
+  it.each([
+    "Phone Number",
+    "phone_number",
+    "Mobile No.",
+    "Contact Number",
+    "PHONE",
+    "Cell Phone",
+  ])("matches header %s", (header) => {
+    const r = parseLeadsCsv(`name,${header}\nJane,+14155550101\n`);
+    expect(r.phoneColumn).not.toBeNull();
+    expect(r.leads).toHaveLength(1);
   });
 });

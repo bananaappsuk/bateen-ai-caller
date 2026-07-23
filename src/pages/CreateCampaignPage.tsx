@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
-import { parseLeadsCsv, type SkippedRow } from "@/services/leadsCsv";
+import { parseLeadsCsv, fileToCsvText, type SkippedRow } from "@/services/leadsCsv";
 import { createCampaign } from "@/services/campaignsService";
 import { insertLeads } from "@/services/leadsService";
 import { listAgents, syncAgentsFromRetell, type AgentRow } from "@/services/agentsService";
@@ -170,7 +170,14 @@ const CreateCampaignPage = () => {
   const handleCsvChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const text = await file.text();
+    let text: string;
+    try {
+      // Handles .csv as text and .xlsx/.xls/.ods via SheetJS.
+      text = await fileToCsvText(file);
+    } catch {
+      toast.error("Couldn't read that file. Save it as .csv or .xlsx and try again.");
+      return;
+    }
     setCsvText(text);
     const parsed = parseLeadsCsv(text, form.country);
     setCsvSummary({ valid: parsed.leads.length, invalid: parsed.invalidCount });
@@ -178,7 +185,11 @@ const CreateCampaignPage = () => {
     setShowSkipped(false);
     setForm((prev) => ({ ...prev, csvFileName: file.name }));
     if (!parsed.phoneColumn) {
-      toast.error("No phone column found. Include a 'phone' (or 'number') column.");
+      toast.error(
+        parsed.headers.length
+          ? `No phone column found. Columns detected: ${parsed.headers.join(", ")}. Rename one to "phone".`
+          : "No columns could be read from that file. Make sure the first row is a header row (e.g. name, phone).",
+      );
     }
   };
 
@@ -490,7 +501,7 @@ const CreateCampaignPage = () => {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".csv,text/csv"
+                      accept=".csv,.xlsx,.xls,.xlsm,.ods,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                       onChange={handleCsvChange}
                       className="hidden"
                     />

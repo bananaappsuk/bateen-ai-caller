@@ -5,6 +5,7 @@
 // other column captured as Retell dynamic variables (custom_data).
 
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 export interface ParsedLead {
   name: string | null;
@@ -27,12 +28,19 @@ export interface ParsedLeadsResult {
   phoneColumn: string | null;
 }
 
+// Header matching is done on a normalized form (lowercase, alphanumerics only) so
+// "Phone Number", "phone-number", "Mobile No." and "phone_number" all match.
+const normHeader = (h: string) => h.toLowerCase().replace(/[^a-z0-9]/g, "");
+
 const PHONE_KEYS = [
-  "phone", "to_number", "number", "mobile", "phone_number", "tel", "telephone",
-];
+  "phone", "tonumber", "number", "mobile", "phonenumber", "mobilenumber", "tel",
+  "telephone", "contactnumber", "contactno", "phoneno", "mobileno", "cell",
+  "cellphone", "msisdn", "whatsapp",
+].map(normHeader);
 const NAME_KEYS = [
-  "name", "full_name", "fullname", "customer_name", "contact", "contact_name",
-];
+  "name", "fullname", "customername", "contact", "contactname", "firstname",
+  "leadname", "clientname",
+].map(normHeader);
 const E164 = /^\+[1-9]\d{6,14}$/;
 // Excel's "General" number format renders/saves any long digit string (like a
 // phone number) as lossy scientific notation, e.g. 4.47887E+11 — the original
@@ -92,6 +100,44 @@ export function normalizePhone(raw: string, defaultCountryCode?: string): string
   return normalizePhoneDetailed(raw, defaultCountryCode).phone;
 }
 
+const SPREADSHEET_RE = /\.(xlsx|xlsm|xlsb|xls|ods)$/i;
+
+// Read an uploaded lead list into CSV text. Excel/ODS workbooks are binary (a
+// zip), so reading them as text yields garbage and no headers are found — parse
+// them with SheetJS and convert the first sheet to CSV instead. Cell *display*
+// text is used so a phone kept as text survives intact.
+// Read a File's bytes. Uses arrayBuffer() where available and falls back to
+// FileReader, so this works across browsers and test environments alike.
+async function readArrayBuffer(file: File): Promise<ArrayBuffer> {
+  if (typeof file.arrayBuffer === "function") return file.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read file."));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+export async function fileToCsvText(file: File): Promise<string> {
+  const isSpreadsheet =
+    SPREADSHEET_RE.test(file.name) ||
+    file.type.includes("spreadsheetml") ||
+    file.type === "application/vnd.ms-excel" ||
+    file.type === "application/vnd.oasis.opendocument.spreadsheet";
+
+  const buffer = await readArrayBuffer(file);
+
+  // Plain CSV/TSV: decode as UTF-8 and drop a leading BOM (Excel adds one).
+  if (!isSpreadsheet) {
+    return new TextDecoder("utf-8").decode(buffer).replace(/^﻿/, "");
+  }
+
+  const workbook = XLSX.read(buffer, { type: "array", cellDates: false, raw: false });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return "";
+  return XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName], { blankrows: false });
+}
+
 export function parseLeadsCsv(csvText: string, defaultCountryCode?: string): ParsedLeadsResult {
   const parsed = Papa.parse<Record<string, string>>(csvText, {
     header: true,
@@ -99,9 +145,9 @@ export function parseLeadsCsv(csvText: string, defaultCountryCode?: string): Par
     transformHeader: (h) => h.trim().toLowerCase(),
   });
 
-  const headers = parsed.meta.fields ?? [];
-  const phoneColumn = headers.find((h) => PHONE_KEYS.includes(h)) ?? null;
-  const nameColumn = headers.find((h) => NAME_KEYS.includes(h)) ?? null;
+  const headers = (parsed.meta.fields ?? []).filter((h) => h !== "");
+  const phoneColumn = headers.find((h) => PHONE_KEYS.includes(normHeader(h))) ?? null;
+  const nameColumn = headers.find((h) => NAME_KEYS.includes(normHeader(h))) ?? null;
   const rows = parsed.data ?? [];
 
   const leads: ParsedLead[] = [];
