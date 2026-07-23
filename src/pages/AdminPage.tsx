@@ -296,7 +296,7 @@ const AdminPage = () => {
 
       {/* Main */}
       <main className="flex-1 ml-[260px] min-h-screen">
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="w-full px-6 py-8">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center">

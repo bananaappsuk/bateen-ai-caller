@@ -330,7 +330,7 @@ const CreateAgentPage = () => {
       {/* Main */}
       <main className="flex-1 ml-[260px] h-screen flex flex-col">
         <div className="shrink-0 bg-white border-b border-slate-100 px-6 sm:px-10 py-5">
-          <div className="max-w-3xl mx-auto flex items-center gap-4">
+          <div className="w-full flex items-center gap-4">
             <button
               onClick={handleCancel}
               className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
@@ -348,7 +348,7 @@ const CreateAgentPage = () => {
         </div>
 
         <form id="create-agent-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-6 sm:px-10 py-8 space-y-6">
+          <div className="w-full px-6 sm:px-10 py-8 space-y-6">
             {/* Presets */}
             <div className="space-y-2">
               <Label>Presets</Label>
@@ -574,7 +574,7 @@ const CreateAgentPage = () => {
         </form>
 
         <div className="shrink-0 bg-white border-t border-slate-100 px-6 sm:px-10 py-4">
-          <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+          <div className="w-full flex items-center justify-between gap-3">
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>

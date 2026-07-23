@@ -220,7 +220,7 @@ const TenantAdminPage = () => {
 
       {/* Main */}
       <main className="flex-1 ml-[260px] min-h-screen">
-        <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="w-full px-6 py-8">
           <div className="mb-8 flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center">
               <Building2 className="h-5 w-5 text-white" />

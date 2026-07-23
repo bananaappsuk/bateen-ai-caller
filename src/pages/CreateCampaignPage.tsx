@@ -334,7 +334,7 @@ const CreateCampaignPage = () => {
       {/* Main */}
       <main className="flex-1 ml-[260px] h-screen flex flex-col">
         <div className="shrink-0 bg-white border-b border-slate-100 px-6 sm:px-10 py-5">
-          <div className="max-w-3xl mx-auto flex items-center gap-4">
+          <div className="w-full flex items-center gap-4">
             <button
               onClick={handleCancel}
               className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
@@ -352,7 +352,7 @@ const CreateCampaignPage = () => {
         </div>
 
         <form id="create-campaign-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-6 sm:px-10 py-8 space-y-6">
+          <div className="w-full px-6 sm:px-10 py-8 space-y-6">
             {/* Campaign Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Campaign Name</Label>
@@ -496,8 +496,8 @@ const CreateCampaignPage = () => {
             <div className="space-y-2">
               <Label>Upload Leads (CSV or Excel)</Label>
               <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="h-11 w-11 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0">
                       <FileSpreadsheet className="h-5 w-5 text-cyan-500" />
                     </div>
@@ -512,7 +512,7 @@ const CreateCampaignPage = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-3 shrink-0">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -528,24 +528,25 @@ const CreateCampaignPage = () => {
                       <Upload className="h-4 w-4 mr-2" />
                       {form.csvFileName ? "Replace file" : "Upload CSV / Excel"}
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={handleDownloadTemplate}
-                      className="text-cyan-600 hover:text-cyan-700"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Template CSV
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={handleDownloadTemplateXlsx}
-                      className="text-cyan-600 hover:text-cyan-700"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Template Excel
-                    </Button>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 whitespace-nowrap">
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Template:</span>
+                      <button
+                        type="button"
+                        onClick={handleDownloadTemplate}
+                        className="font-medium text-cyan-600 hover:text-cyan-700 hover:underline"
+                      >
+                        CSV
+                      </button>
+                      <span className="text-slate-300">·</span>
+                      <button
+                        type="button"
+                        onClick={handleDownloadTemplateXlsx}
+                        className="font-medium text-cyan-600 hover:text-cyan-700 hover:underline"
+                      >
+                        Excel
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -592,7 +593,7 @@ const CreateCampaignPage = () => {
         </form>
 
         <div className="shrink-0 bg-white border-t border-slate-100 px-6 sm:px-10 py-4">
-          <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+          <div className="w-full flex items-center justify-between gap-3">
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>

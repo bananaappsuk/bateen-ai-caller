@@ -227,7 +227,7 @@ const CampaignDetailPage = () => {
 
       {/* Main */}
       <main className="flex-1 ml-[260px] min-h-screen">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="w-full px-6 py-8">
           {loading ? (
             <div className="py-24 flex items-center justify-center text-slate-400">
               <Loader2 className="h-6 w-6 animate-spin" />

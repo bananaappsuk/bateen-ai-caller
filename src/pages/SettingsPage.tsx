@@ -427,7 +427,7 @@ const SettingsPage = () => {
 
       {/* Main */}
       <main className="flex-1 ml-[260px] min-h-screen">
-        <div className="max-w-5xl mx-auto px-6 py-8">
+        <div className="w-full px-6 py-8">
           {/* Header */}
           <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
