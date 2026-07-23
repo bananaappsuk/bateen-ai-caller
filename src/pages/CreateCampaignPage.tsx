@@ -479,7 +479,7 @@ const CreateCampaignPage = () => {
 
             {/* CSV Upload */}
             <div className="space-y-2">
-              <Label>Upload CSV</Label>
+              <Label>Upload Leads (CSV or Excel)</Label>
               <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
@@ -493,7 +493,7 @@ const CreateCampaignPage = () => {
                       <p className="text-xs text-slate-500">
                         {csvSummary
                           ? `${csvSummary.valid.toLocaleString()} valid · ${csvSummary.invalid} skipped`
-                          : "CSV with name, phone, email, company columns."}
+                          : "CSV or Excel (.xlsx) with name, phone, email, company columns."}
                       </p>
                     </div>
                   </div>
@@ -511,7 +511,7 @@ const CreateCampaignPage = () => {
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Upload className="h-4 w-4 mr-2" />
-                      {form.csvFileName ? "Replace CSV" : "Upload CSV"}
+                      {form.csvFileName ? "Replace file" : "Upload CSV / Excel"}
                     </Button>
                     <Button
                       type="button"
@@ -529,7 +529,7 @@ const CreateCampaignPage = () => {
               <div className="flex items-start gap-2 text-xs text-slate-500">
                 <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                 <p>
-                  Opening this CSV in Excel? Format the phone column as Text before typing numbers into it
+                  Excel (.xlsx) files upload directly — no need to convert. Format the phone column as Text before typing numbers into it
                   (or prefix each number with an apostrophe, e.g. <code>'+447700900123</code>). Otherwise Excel
                   can silently rewrite long phone numbers as scientific notation (e.g. <code>4.47887E+11</code>),
                   which can't be recovered once saved.
