@@ -35,10 +35,23 @@ export const adminTrends = () => call<{ callsByDay: Record<string, number> }>("t
 export const adminListUsers = () => call<{ users: AdminUser[] }>("listUsers");
 export const adminDisableUser = (id: string) => call<{ ok: boolean }>("disableUser", { id });
 export const adminEnableUser = (id: string) => call<{ ok: boolean }>("enableUser", { id });
-export const adminDeleteUser = (id: string) => call<{ ok: boolean }>("deleteUser", { id });
+export const adminDeleteUser = (id: string) =>
+  call<{ ok: boolean; deleted?: Record<string, number> }>("deleteUser", { id });
 export const adminImpersonate = (id: string) => call<{ link: string }>("impersonate", { id });
 export const adminSyncNumbers = () => call<{ synced: number }>("syncNumbers");
 export const adminBuyNumber = (areaCode?: string) => call<{ number: string }>("buyNumber", { areaCode });
 export const adminRemoveNumber = (phone: string) => call<{ ok: boolean }>("removeNumber", { phone });
 export const adminEndTrial = (id?: string) => call<{ ok: boolean }>("endTrial", { id });
+export const adminAdjustCredits = (delta: number, reason?: string) =>
+  call<{ credits: number }>("adjustCredits", { delta, reason });
 export const adminSeedDemo = () => call<{ ok: boolean; campaignId: string }>("seedDemo");
+
+export interface DemoCallConfig {
+  agent_id: string | null;
+  agent_name: string | null;
+  phone_number: string | null;
+  updated_at: string;
+}
+export const adminGetDemoConfig = () => call<{ config: DemoCallConfig | null }>("getDemoConfig");
+export const adminSetDemoConfig = (agentId: string, agentName: string | null, phoneNumber: string) =>
+  call<{ config: DemoCallConfig }>("setDemoConfig", { agentId, agentName, phoneNumber });

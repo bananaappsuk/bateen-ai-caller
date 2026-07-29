@@ -39,25 +39,48 @@ export async function listTransactions(limit = 50): Promise<CreditTransaction[]>
   return data ?? [];
 }
 
-// Deduct credits for a completed call + record a ledger entry. Mirrors VocalMax:
-// any connected call is charged, ~1 credit per minute (rounded up, min 1).
+// Reserve one call's minimum charge atomically, right before dialing it. The
+// reserve-call-credit edge function performs the check-and-decrement as a
+// single Postgres statement (see the atomic_call_credit_reservation
+// migration), so concurrent reservations — multiple calls in one batch,
+// multiple browser tabs, or multiple campaigns for the same user — can never
+// collectively spend more than the account holds. `authorized: false` means
+// the balance can't cover another call right now.
+export async function reserveCallCredit(): Promise<{ authorized: boolean; credits: number }> {
+  const { data, error } = await supabase.functions.invoke<{
+    authorized?: boolean;
+    credits?: number;
+    error?: string;
+  }>("reserve-call-credit", { body: {} });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  return { authorized: data?.authorized ?? false, credits: data?.credits ?? 0 };
+}
+
+// Refunds a reservation for a call that never connected — mirrors VocalMax:
+// only a connected call is ever charged, so an unconnected attempt gives back
+// the hold taken by reserveCallCredit().
+export async function releaseCallCredit(): Promise<void> {
+  const { data, error } = await supabase.functions.invoke<{ error?: string }>("release-call-credit", { body: {} });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+}
+
+// Settle a completed call's real cost against its reservation + record a
+// ledger entry, via the charge-call edge function (service role) — the
+// balance/ledger must never be writable directly from the browser. Mirrors
+// VocalMax: any connected call is charged, ~1 credit per minute (rounded up,
+// min 1). Call reserveCallCredit() before dialing and this after the call
+// connects; call releaseCallCredit() instead if it never connects.
 export async function chargeForCall(
   minutes: number,
   meta: { leadName?: string | null; campaignId?: string | null },
 ): Promise<void> {
-  const credits = Math.max(1, Math.ceil(minutes));
-  const account = await getBillingAccount();
-  if (!account) return;
-  await supabase
-    .from("billing_accounts")
-    .update({ credits: Math.max(0, (account.credits ?? 0) - credits) })
-    .eq("id", account.id);
-  await supabase.from("credit_transactions").insert({
-    type: "call",
-    credits: -credits,
-    cost_cents: credits * 28,
-    description: `Call to ${meta.leadName ?? "lead"}`,
+  const { data, error } = await supabase.functions.invoke<{ credits?: number; error?: string }>("charge-call", {
+    body: { minutes, leadName: meta.leadName ?? null },
   });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
 }
 
 // Invoke a Stripe edge function and follow the returned checkout/portal URL.

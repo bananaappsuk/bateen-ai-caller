@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Zap, BarChart3 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -20,14 +21,25 @@ const HeroSection = () => {
 
   const handleDemo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!demoPhone.trim()) return;
+    const phone = demoPhone.trim();
+    if (!phone) return;
+    if (!/^\+[1-9]\d{6,14}$/.test(phone)) {
+      toast.error("Enter your number in international format, e.g. +447700900123.");
+      return;
+    }
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke<{ ok?: boolean; called?: boolean; error?: string }>(
         "demo-call",
-        { body: { phone: demoPhone.trim() } },
+        { body: { phone } },
       );
-      if (error) throw error;
+      if (error) {
+        if (error instanceof FunctionsHttpError) {
+          const body = await error.context.json().catch(() => null);
+          throw new Error(body?.error || error.message);
+        }
+        throw error;
+      }
       if (data?.error) throw new Error(data.error);
       setSent(true);
       toast.success(data?.called ? "Calling you now — pick up!" : "Thanks! We'll call you shortly.");

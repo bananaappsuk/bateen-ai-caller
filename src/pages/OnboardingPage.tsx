@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getDevUser } from "@/lib/devAuth";
 import { listAgents } from "@/services/agentsService";
 import { listCampaigns } from "@/services/campaignsService";
-import { Bot, PhoneOutgoing, Users, Rocket, Check, ArrowRight } from "lucide-react";
+import { Bot, Users, Rocket, Check, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
 
@@ -11,7 +11,6 @@ const OnboardingPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
   const [hasAgent, setHasAgent] = useState(false);
-  const [hasNumber, setHasNumber] = useState(false);
   const [hasCampaign, setHasCampaign] = useState(false);
 
   useEffect(() => {
@@ -19,7 +18,6 @@ const OnboardingPage = () => {
       try {
         const [agents, campaigns] = await Promise.all([listAgents(), listCampaigns()]);
         setHasAgent(agents.length > 0);
-        setHasNumber(agents.some((a) => !!a.phone_number));
         setHasCampaign(campaigns.length > 0);
       } catch {
         // ignore
@@ -35,14 +33,6 @@ const OnboardingPage = () => {
       cta: "Create agent",
       route: "/ai-agents/create",
       icon: Bot,
-    },
-    {
-      title: "Attach a phone number",
-      desc: "Give your agent a number so it can place calls.",
-      done: hasNumber,
-      cta: "Assign a number",
-      route: "/ai-agents",
-      icon: PhoneOutgoing,
     },
     {
       title: "Upload leads & launch a campaign",
@@ -65,7 +55,7 @@ const OnboardingPage = () => {
             Welcome{user ? `, ${user.name}` : ""} 👋
           </h1>
           <p className="text-sm text-slate-500 mt-2">
-            Three quick steps and your AI will be dialing. {completed}/3 done.
+            Two quick steps and your AI will be dialing. {completed}/2 done.
           </p>
         </div>
 

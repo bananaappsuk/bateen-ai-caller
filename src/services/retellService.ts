@@ -293,12 +293,18 @@ export function listVoices(): Promise<RetellVoice[]> {
 
 // ---------- Phone numbers ----------
 
+export interface RetellNumberAgentBinding {
+  agent_id: string;
+  agent_version?: number;
+  weight?: number;
+}
+
 export interface RetellPhoneNumber {
   phone_number: string;
   phone_number_pretty?: string;
   nickname?: string;
-  inbound_agents?: { agent_id: string }[];
-  outbound_agents?: { agent_id: string }[];
+  inbound_agents?: RetellNumberAgentBinding[];
+  outbound_agents?: RetellNumberAgentBinding[];
   [key: string]: unknown;
 }
 
@@ -312,22 +318,11 @@ export async function listPhoneNumbers(): Promise<RetellPhoneNumber[]> {
   return Array.isArray(res) ? res : (res.items ?? []);
 }
 
-// Binds (or releases, with an empty agentId) a number's inbound/outbound agent
-// on Retell's own side — the old flat inbound_agent_id/outbound_agent_id fields
-// are deprecated; Retell now takes a weighted agent list per direction. Without
-// this, our local `agents.phone_number` link gets silently reverted the next
-// time syncAgentsFromRetell() reads Retell's (unchanged) binding.
-export async function setPhoneNumberAgent(
-  phoneNumber: string,
-  agent: { agentId: string; agentVersion?: number | null } | null,
-): Promise<RetellPhoneNumber> {
-  const agents = agent ? [{ agent_id: agent.agentId, agent_version: agent.agentVersion ?? 0, weight: 1 }] : [];
-  return callRetell<RetellPhoneNumber>({
-    path: `/update-phone-number/${encodeURIComponent(phoneNumber)}`,
-    method: "PATCH",
-    body: { inbound_agents: agents, outbound_agents: agents },
-  });
-}
+// Binding a number to an agent (or releasing it) is now done server-side by
+// the link-phone-number / unlink-phone-number edge functions, which
+// independently verify the caller owns both the number and the agent before
+// touching Retell. listPhoneNumbers() above remains for the admin-only
+// global inventory view (AdminPage) — regular users never call it.
 
 // ---------- LLM read/update ----------
 
@@ -360,7 +355,6 @@ export const retellService = {
   listAgents,
   listVoices,
   listPhoneNumbers,
-  setPhoneNumberAgent,
   getLlm,
   updateLlm,
   createWebCall,

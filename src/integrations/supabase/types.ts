@@ -569,42 +569,50 @@ export type Database = {
       }
       phone_numbers: {
         Row: {
-          assigned_agent_id: string | null
           created_at: string
           friendly_name: string | null
           id: string
-          phone_number: string
+          linked_agent_id: string | null
           provider: string | null
           retell_phone_number_id: string
           status: string
+          twilio_phone_number: string
           updated_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
-          assigned_agent_id?: string | null
           created_at?: string
           friendly_name?: string | null
           id?: string
-          phone_number: string
+          linked_agent_id?: string | null
           provider?: string | null
           retell_phone_number_id: string
           status?: string
+          twilio_phone_number: string
           updated_at?: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
-          assigned_agent_id?: string | null
           created_at?: string
           friendly_name?: string | null
           id?: string
-          phone_number?: string
+          linked_agent_id?: string | null
           provider?: string | null
           retell_phone_number_id?: string
           status?: string
+          twilio_phone_number?: string
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "phone_numbers_linked_agent_id_fkey"
+            columns: ["linked_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signup_leads: {
         Row: {
@@ -698,6 +706,48 @@ export type Database = {
           owner_id?: string | null
           updated_at?: string
           white_label?: boolean
+        }
+        Relationships: []
+      }
+      twilio_configurations: {
+        Row: {
+          account_sid: string | null
+          api_key: string | null
+          api_secret: string | null
+          auth_token: string | null
+          created_at: string
+          friendly_name: string | null
+          id: string
+          phone_number: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_sid?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          auth_token?: string | null
+          created_at?: string
+          friendly_name?: string | null
+          id?: string
+          phone_number: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_sid?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          auth_token?: string | null
+          created_at?: string
+          friendly_name?: string | null
+          id?: string
+          phone_number?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
