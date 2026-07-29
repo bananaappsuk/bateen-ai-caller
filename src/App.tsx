@@ -15,7 +15,6 @@ import DashboardPage from "./pages/DashboardPage.tsx";
 import AIAgentsPage from "./pages/AIAgentsPage.tsx";
 import CreateAgentPage from "./pages/CreateAgentPage.tsx";
 import EditAgentPage from "./pages/EditAgentPage.tsx";
-import LinkNumberPage from "./pages/LinkNumberPage.tsx";
 import CampaignsPage from "./pages/CampaignsPage.tsx";
 import CreateCampaignPage from "./pages/CreateCampaignPage.tsx";
 import CampaignDetailPage from "./pages/CampaignDetailPage.tsx";
@@ -59,11 +58,14 @@ const App = () => (
             <Route path="/ai-agents" element={P(<AIAgentsPage />)} />
             <Route path="/ai-agents/create" element={P(<CreateAgentPage />)} />
             <Route path="/ai-agents/:id/edit" element={P(<EditAgentPage />)} />
-            <Route path="/ai-agents/:id/number" element={P(<LinkNumberPage />)} />
+            {/* Every agent automatically dials from the single platform Twilio
+                number (src/lib/platformConfig.ts) — there is no per-agent
+                number to link anymore. */}
+            <Route path="/ai-agents/:id/number" element={<Navigate to="/ai-agents" replace />} />
             <Route path="/dashboard/agents" element={P(<AIAgentsPage />)} />
             <Route path="/dashboard/agents/create" element={P(<CreateAgentPage />)} />
             <Route path="/dashboard/agents/:id/edit" element={P(<EditAgentPage />)} />
-            <Route path="/dashboard/agents/:id/number" element={P(<LinkNumberPage />)} />
+            <Route path="/dashboard/agents/:id/number" element={<Navigate to="/ai-agents" replace />} />
             <Route path="/campaigns" element={P(<CampaignsPage />)} />
             <Route path="/campaigns/create" element={P(<CreateCampaignPage />)} />
             <Route path="/campaigns/:id" element={P(<CampaignDetailPage />)} />

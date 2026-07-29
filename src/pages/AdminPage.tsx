@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
-import { supabase } from "@/integrations/supabase/client";
 import {
   getBillingAccount,
   listTransactions,
@@ -20,10 +19,15 @@ import {
   adminBuyNumber,
   adminRemoveNumber,
   adminEndTrial,
+  adminAdjustCredits,
   adminSeedDemo,
+  adminGetDemoConfig,
+  adminSetDemoConfig,
   type AdminOverview,
   type AdminUser,
+  type DemoCallConfig,
 } from "@/services/adminService";
+import { listAgents, type AgentRow } from "@/services/agentsService";
 import { retellService, type RetellPhoneNumber } from "@/services/retellService";
 import {
   DropdownMenu,
@@ -35,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   LayoutDashboard,
   Bot,
@@ -78,6 +83,11 @@ const AdminPage = () => {
   const [txns, setTxns] = useState<CreditTransaction[]>([]);
   const [adjust, setAdjust] = useState("");
   const [reason, setReason] = useState("");
+  const [agents, setAgents] = useState<AgentRow[]>([]);
+  const [demoConfig, setDemoConfig] = useState<DemoCallConfig | null>(null);
+  const [demoAgentId, setDemoAgentId] = useState("");
+  const [demoPhoneNumber, setDemoPhoneNumber] = useState("");
+  const [savingDemo, setSavingDemo] = useState(false);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
@@ -104,6 +114,14 @@ const AdminPage = () => {
       setTxns(transactions);
       await loadUsers();
       retellService.listPhoneNumbers().then(setNumbers).catch(() => setNumbers([]));
+      listAgents().then(setAgents).catch(() => setAgents([]));
+      adminGetDemoConfig()
+        .then(({ config }) => {
+          setDemoConfig(config);
+          setDemoAgentId(config?.agent_id ?? "");
+          setDemoPhoneNumber(config?.phone_number ?? "");
+        })
+        .catch(() => undefined);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to load admin data.");
     }
@@ -126,15 +144,7 @@ const AdminPage = () => {
     const delta = Number(adjust);
     if (!delta || !account) return;
     try {
-      await supabase
-        .from("billing_accounts")
-        .update({ credits: Math.max(0, (account.credits ?? 0) + delta) })
-        .eq("id", account.id);
-      await supabase.from("credit_transactions").insert({
-        type: "adjustment",
-        credits: delta,
-        description: reason.trim() || `Admin adjustment ${delta > 0 ? "+" : ""}${delta}`,
-      });
+      await adminAdjustCredits(delta, reason.trim() || undefined);
       setAdjust("");
       setReason("");
       toast.success("Credits adjusted.");
@@ -163,11 +173,15 @@ const AdminPage = () => {
     }
   };
   const remove = async (u: AdminUser) => {
-    if (!confirm(`Permanently delete ${u.email}?`)) return;
+    if (!confirm(`Permanently delete ${u.email} and all their data?`)) return;
     try {
-      await adminDeleteUser(u.id);
+      const { deleted } = await adminDeleteUser(u.id);
       setUsers((prev) => prev.filter((x) => x.id !== u.id));
-      toast.success("User deleted.");
+      const counts = Object.entries(deleted ?? {})
+        .filter(([, n]) => n > 0)
+        .map(([table, n]) => `${table}: ${n}`)
+        .join(", ");
+      toast.success(counts ? `User deleted. Removed — ${counts}.` : "User deleted (no related records found).");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed.");
     }
@@ -221,6 +235,24 @@ const AdminPage = () => {
       toast.error(err instanceof Error ? err.message : "Failed.");
     }
   };
+  const saveDemoConfig = async () => {
+    if (!demoAgentId || !demoPhoneNumber) {
+      toast.error("Pick both an agent and a phone number.");
+      return;
+    }
+    setSavingDemo(true);
+    try {
+      const agentName = agents.find((a) => a.retell_agent_id === demoAgentId)?.name ?? null;
+      const { config } = await adminSetDemoConfig(demoAgentId, agentName, demoPhoneNumber);
+      setDemoConfig(config);
+      toast.success("Demo call settings saved.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save demo call settings.");
+    } finally {
+      setSavingDemo(false);
+    }
+  };
+
   const endTrial = async () => {
     try {
       await adminEndTrial();
@@ -482,6 +514,65 @@ const AdminPage = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+
+          {/* Demo call settings */}
+          <div className="mt-6 bg-white rounded-2xl border border-slate-100 shadow-soft p-5">
+            <h2 className="text-sm font-semibold text-slate-900 mb-1">Demo Call Settings</h2>
+            <p className="text-xs text-slate-500 mb-4">
+              Agent and number the public landing-page "Get a live demo call" button uses. Falls back to the
+              DEMO_AGENT_ID / DEMO_FROM_NUMBER secrets if nothing is set here.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Agent</label>
+                <Select value={demoAgentId} onValueChange={setDemoAgentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agents
+                      .filter((a) => a.retell_agent_id)
+                      .map((a) => (
+                        <SelectItem key={a.id} value={a.retell_agent_id as string}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Phone number</label>
+                <Select value={demoPhoneNumber} onValueChange={setDemoPhoneNumber}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a number" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {numbers.map((n) => (
+                      <SelectItem key={n.phone_number} value={n.phone_number}>
+                        {n.phone_number_pretty ?? n.phone_number}
+                        {n.nickname ? ` — ${n.nickname}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <Button
+                onClick={saveDemoConfig}
+                disabled={savingDemo}
+                className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-95"
+              >
+                {savingDemo ? "Saving…" : "Save demo settings"}
+              </Button>
+              {demoConfig?.agent_id && (
+                <p className="text-xs text-slate-500">
+                  Currently live: <span className="font-medium text-slate-700">{demoConfig.agent_name ?? demoConfig.agent_id}</span> on{" "}
+                  <span className="font-mono">{demoConfig.phone_number}</span>
+                </p>
+              )}
             </div>
           </div>
 

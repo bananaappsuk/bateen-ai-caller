@@ -35,9 +35,18 @@ Deno.serve(async (req) => {
 
     await supabase.from("signup_leads").insert({ phone, name: name || null, source: "live_demo" });
 
+    // Admin-configured agent/number (AdminPage "Demo Call Settings") take
+    // priority over the DEMO_AGENT_ID / DEMO_FROM_NUMBER secrets, which now
+    // only serve as a fallback for a fresh deploy with nothing configured yet.
+    const { data: config } = await supabase
+      .from("demo_call_config")
+      .select("agent_id, phone_number")
+      .eq("id", true)
+      .maybeSingle();
+
     const key = Deno.env.get("RETELL_API_KEY");
-    const agent = Deno.env.get("DEMO_AGENT_ID");
-    const from = Deno.env.get("DEMO_FROM_NUMBER");
+    const agent = config?.agent_id || Deno.env.get("DEMO_AGENT_ID");
+    const from = config?.phone_number || Deno.env.get("DEMO_FROM_NUMBER");
     let called = false;
     if (key && agent && from) {
       try {
@@ -47,8 +56,9 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ from_number: from, to_number: phone, override_agent_id: agent }),
         });
         called = r.ok;
-      } catch {
-        // non-fatal
+        if (!r.ok) console.error("Retell create-phone-call failed", r.status, await r.text());
+      } catch (err) {
+        console.error("Retell create-phone-call threw", err);
       }
     }
     return json({ ok: true, called });

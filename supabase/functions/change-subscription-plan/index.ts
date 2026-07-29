@@ -1,6 +1,14 @@
 // In-place subscription plan change with proration (VocalMax changeSubscriptionPlan).
 // Body: { newPriceId, tier, monthlyCredits } -> { message }.
-import { admin, stripe, getUserId, ensureUserAccount, json, corsHeaders } from "../_shared/billing.ts";
+import {
+  admin,
+  stripe,
+  getUserId,
+  ensureUserAccount,
+  isMissingStripeResource,
+  json,
+  corsHeaders,
+} from "../_shared/billing.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -17,7 +25,17 @@ Deno.serve(async (req) => {
       return json({ error: "No active subscription — subscribe via checkout first." }, 400);
     }
 
-    const sub = await s.subscriptions.retrieve(account.stripe_subscription_id);
+    let sub;
+    try {
+      sub = await s.subscriptions.retrieve(account.stripe_subscription_id);
+    } catch (e) {
+      // Stale id from before a test→live key switch (or deleted in Stripe) —
+      // same actionable message as never having subscribed.
+      if (isMissingStripeResource(e)) {
+        return json({ error: "No active subscription — subscribe via checkout first." }, 400);
+      }
+      throw e;
+    }
     const itemId = sub.items.data[0]?.id;
     if (!itemId) return json({ error: "Subscription has no line item to update." }, 400);
 

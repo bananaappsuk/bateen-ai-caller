@@ -1,6 +1,14 @@
 // Proration preview before an in-place plan change (VocalMax previewPlanChange).
 // Body: { newPriceId } -> { chargeToday, currency, message } | { requiresCheckout }.
-import { admin, stripe, getUserId, ensureUserAccount, json, corsHeaders } from "../_shared/billing.ts";
+import {
+  admin,
+  stripe,
+  getUserId,
+  ensureUserAccount,
+  isMissingStripeResource,
+  json,
+  corsHeaders,
+} from "../_shared/billing.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -17,7 +25,15 @@ Deno.serve(async (req) => {
       return json({ requiresCheckout: true, message: "No active subscription — you'll go to checkout." });
     }
 
-    const sub = await s.subscriptions.retrieve(account.stripe_subscription_id);
+    let sub;
+    try {
+      sub = await s.subscriptions.retrieve(account.stripe_subscription_id);
+    } catch (e) {
+      if (isMissingStripeResource(e)) {
+        return json({ requiresCheckout: true, message: "No active subscription — you'll go to checkout." });
+      }
+      throw e;
+    }
     const itemId = sub.items.data[0]?.id;
     const preview = await s.invoices.retrieveUpcoming({
       customer: account.stripe_customer_id,

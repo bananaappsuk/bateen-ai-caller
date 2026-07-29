@@ -47,7 +47,6 @@ import {
   ChevronsUpDown,
   RefreshCw,
   PhoneOff,
-  Phone,
   Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -333,37 +332,16 @@ const AIAgentsPage = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="space-y-1 mb-4">
-                      <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5" />
-                        {agent.phone_number ? (
-                          agent.phone_number
-                        ) : (
-                          <button
-                            onClick={() => navigate(`/ai-agents/${agent.id}/number`)}
-                            className="text-cyan-600 hover:underline"
-                          >
-                            Assign a number
-                          </button>
-                        )}
-                      </div>
-                      {agent.deleted_in_retell && (
-                        <div className="text-xs text-amber-600">Removed in Retell</div>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-1 pt-3 border-t border-slate-100">
+                    {agent.deleted_in_retell && (
+                      <div className="text-xs text-amber-600 mb-4">Removed in Retell</div>
+                    )}
+                    <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-100">
                       <button
                         onClick={() => navigate(`/ai-agents/${agent.id}/edit`)}
                         disabled={!agent.retell_agent_id}
                         className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40"
                       >
                         <Pencil className="h-3.5 w-3.5" /> Edit
-                      </button>
-                      <button
-                        onClick={() => navigate(`/ai-agents/${agent.id}/number`)}
-                        className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        <Phone className="h-3.5 w-3.5" /> Number
                       </button>
                       <button
                         onClick={() => handleTest(agent)}

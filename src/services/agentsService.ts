@@ -39,41 +39,23 @@ export async function deleteAgent(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export interface PhoneNumberLinkStatus {
-  phone_number: string;
-  agent_id: string;
-  agent_name: string;
-  has_active_campaign: boolean;
-}
-
-// Numbers are a shared pool across every tenant, not per-user — this reads
-// (name only, via a SECURITY DEFINER RPC) which agent currently holds each
-// number and whether it's mid-campaign, regardless of who owns that agent.
-export async function getPhoneNumberLinkStatus(numbers: string[]): Promise<PhoneNumberLinkStatus[]> {
-  if (numbers.length === 0) return [];
-  const { data, error } = await supabase.rpc("phone_number_link_status", { numbers });
-  if (error) throw error;
-  return data ?? [];
-}
-
-// Pull the user's Retell agents into the local `agents` table (matched by
-// retell_agent_id), mapping each one's outbound caller-ID from Retell's
-// list-phone-numbers. Mirrors VocalMax's agent sync.
+// Refresh the user's already-owned agents from Retell (name/voice/version).
+// Retell's list-agents is a whole-account read (every tenant's agents, since
+// Retell has no concept of this app's tenants) — this used to also CREATE a
+// new local row for any Retell agent not yet known locally, which let one
+// tenant's "sync" pull in and take local ownership of another tenant's
+// actual Retell agent (a real cross-tenant leak: RLS hides other tenants'
+// local rows from the `existing` lookup below, so a stranger's retell_agent_id
+// looked "new" and got inserted under the syncing user's own user_id).
+// Agents are only ever created going forward via CreateAgentPage, which mints
+// a brand-new Retell agent_id at creation time — this only ever UPDATEs rows
+// the caller already owns, never inserts.
+// Phone-number binding is no longer read from here either: every agent
+// automatically dials from the single platform Twilio number
+// (src/lib/platformConfig.ts), not a per-agent Retell binding derived from
+// list-phone-numbers.
 export async function syncAgentsFromRetell(): Promise<{ synced: number }> {
-  const [retellAgents, phoneNumbers] = await Promise.all([
-    retellService.listAgents(),
-    retellService.listPhoneNumbers().catch(() => []),
-  ]);
-
-  const phoneByAgent = new Map<string, string>();
-  for (const pn of phoneNumbers) {
-    for (const b of pn.outbound_agents ?? []) {
-      if (b.agent_id) phoneByAgent.set(b.agent_id, pn.phone_number);
-    }
-    for (const b of pn.inbound_agents ?? []) {
-      if (b.agent_id && !phoneByAgent.has(b.agent_id)) phoneByAgent.set(b.agent_id, pn.phone_number);
-    }
-  }
+  const retellAgents = await retellService.listAgents();
 
   const existing = await listAgents();
   const byRetellId = new Map(
@@ -82,27 +64,20 @@ export async function syncAgentsFromRetell(): Promise<{ synced: number }> {
 
   let synced = 0;
   for (const ra of retellAgents) {
-    const row: AgentInsert = {
-      retell_agent_id: ra.agent_id,
+    const cur = byRetellId.get(ra.agent_id);
+    if (!cur) continue; // not one of this tenant's agents — never claim it locally
+    const row: Partial<AgentInsert> = {
       retell_agent_version: typeof ra.version === "number" ? ra.version : null,
       name: ra.agent_name ?? "Untitled agent",
       retell_voice_id: (ra.voice_id as string | undefined) ?? null,
-      phone_number: phoneByAgent.get(ra.agent_id) ?? null,
       status: "active",
       deleted_in_retell: false,
     };
-    const cur = byRetellId.get(ra.agent_id);
     try {
-      if (cur) {
-        await updateAgent(cur.id, row);
-      } else {
-        await createAgent(row);
-      }
+      await updateAgent(cur.id, row);
       synced++;
     } catch {
-      // Retell is a shared account across tenants — an agent belonging to
-      // another user (or a phone number they hold) will conflict here. Skip
-      // it and keep syncing the rest instead of aborting the whole pass.
+      // Best-effort refresh — keep syncing the rest.
     }
   }
   return { synced };

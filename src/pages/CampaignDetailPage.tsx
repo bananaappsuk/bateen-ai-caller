@@ -5,11 +5,13 @@ import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import {
   getCampaign,
   updateCampaign,
+  canStartCampaign,
   type CampaignRow,
   type CampaignStatus,
 } from "@/services/campaignsService";
 import { listLeads, type LeadRow, type LeadStatus } from "@/services/leadsService";
 import { getAgent, type AgentRow } from "@/services/agentsService";
+import { PLATFORM_TWILIO_NUMBER } from "@/lib/platformConfig";
 import { useDialer } from "@/services/dialerEngine";
 import type { CallingHours } from "@/lib/callingHours";
 import {
@@ -151,8 +153,17 @@ const CampaignDetailPage = () => {
   );
 
   const setStatus = async (next: CampaignStatus) => {
-    if (!id) return;
+    if (!id || !campaign) return;
     try {
+      if (next === "running") {
+        // Fail fast with a clear reason rather than silently queuing and
+        // letting the dialer discover the same problem on its next tick.
+        const check = await canStartCampaign(campaign);
+        if (!check.ok) {
+          toast.error(check.reason ?? "This campaign can't be started right now.");
+          return;
+        }
+      }
       await updateCampaign(id, next === "running" ? { status: next, paused_reason: null } : { status: next });
       setCampaign((prev) => (prev ? { ...prev, status: next } : prev));
       toast.success(next === "running" ? "Campaign started — dialing…" : "Campaign paused.");
@@ -254,7 +265,7 @@ const CampaignDetailPage = () => {
                       </span>
                     </div>
                     <p className="text-sm text-slate-500 mt-0.5">
-                      {agent ? `${agent.name} · ${agent.phone_number ?? "no number"}` : "No agent assigned"}
+                      {agent ? `${agent.name} · ${PLATFORM_TWILIO_NUMBER}` : "No agent assigned"}
                     </p>
                   </div>
                 </div>
@@ -262,7 +273,7 @@ const CampaignDetailPage = () => {
                   {canStart ? (
                     <button
                       onClick={() => setStatus("running")}
-                      disabled={!agent?.retell_agent_id || !agent?.phone_number}
+                      disabled={!agent?.retell_agent_id}
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 disabled:opacity-50"
                     >
                       <Play className="h-4 w-4" /> {status === "paused" ? "Resume" : "Start"} Campaign
@@ -278,9 +289,29 @@ const CampaignDetailPage = () => {
                 </div>
               </div>
 
-              {(!agent?.retell_agent_id || !agent?.phone_number) && (
+              {!agent?.retell_agent_id && (
                 <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">
-                  This campaign's agent needs a synced Retell agent and an assigned phone number before it can dial.
+                  This campaign's agent needs to be synced with Retell before it can dial.
+                </div>
+              )}
+
+              {status === "paused" && campaign.paused_reason === "out_of_credits" && (
+                <div className="mb-6 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 flex items-center justify-between gap-4">
+                  <span>
+                    Paused — you're out of calling credits. Any calls already in progress will finish normally;
+                    add credits to resume dialing new leads.
+                  </span>
+                  <button
+                    onClick={() => navigate("/dashboard/settings?tab=Billing")}
+                    className="shrink-0 rounded-lg bg-red-600 text-white text-xs font-semibold px-3 py-1.5 hover:bg-red-700"
+                  >
+                    Add credits
+                  </button>
+                </div>
+              )}
+              {status === "paused" && campaign.paused_reason === "no_agent" && (
+                <div className="mb-6 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3">
+                  Paused — this campaign's agent isn't synced with Retell. Re-sync or reassign the agent to resume.
                 </div>
               )}
 

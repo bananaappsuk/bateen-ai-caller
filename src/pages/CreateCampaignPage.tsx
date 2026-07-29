@@ -13,6 +13,7 @@ import { createCampaign } from "@/services/campaignsService";
 import { insertLeads } from "@/services/leadsService";
 import { listAgents, syncAgentsFromRetell, type AgentRow } from "@/services/agentsService";
 import { getBillingAccount } from "@/services/creditsService";
+import { PLATFORM_TWILIO_NUMBER } from "@/lib/platformConfig";
 import { limitsFor, type PlanLimits } from "@/lib/plans";
 import { loadDynamicVars, saveDynamicVars } from "@/lib/dynamicVars";
 import {
@@ -381,7 +382,6 @@ const CreateCampaignPage = () => {
                     {agents.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.name}
-                        {a.phone_number ? ` · ${a.phone_number}` : " · no number"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -391,9 +391,7 @@ const CreateCampaignPage = () => {
                   No agents found. Create one on the AI Agents page first.
                 </p>
               )}
-              <p className="text-xs text-slate-500">
-                The campaign dials from the agent's assigned phone number.
-              </p>
+              <p className="text-xs text-slate-500">The campaign dials from {PLATFORM_TWILIO_NUMBER}.</p>
             </div>
 
             {/* Concurrency + Retries */}
