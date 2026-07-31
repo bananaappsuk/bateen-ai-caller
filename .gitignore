@@ -18,6 +18,10 @@ dist-ssr
 # Supabase CLI local cache/state
 supabase/.temp/
 
+# Raw Academy screen recordings — large source files, not meant for git.
+# Edited/cropped copies used by the app live in public/academy/videos instead.
+public/acadamey/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
