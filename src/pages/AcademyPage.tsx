@@ -9,6 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   LayoutDashboard,
   Bot,
@@ -26,9 +27,15 @@ import {
   Search,
   Clock,
   BookOpen,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
+import { academyCategories, academyLessons, type AcademyCategory } from "@/data/academyLessons";
+import { useAcademyProgress } from "@/hooks/use-academy-progress";
+import AcademyVideoPlayer from "@/components/academy/AcademyVideoPlayer";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
@@ -40,86 +47,17 @@ const navItems = [
   { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
 ];
 
-const categories = [
-  "Getting Started",
-  "AI Agents",
-  "Campaigns",
-  "Adding Credits",
-  "Leads",
-  "Support",
-] as const;
-type Category = (typeof categories)[number];
-
-interface Tutorial {
-  id: string;
-  title: string;
-  description: string;
-  duration: string;
-  category: Category;
-}
-
-const TUTORIALS_KEY = "ai_academy_tutorials_v2";
-
-const placeholderTutorials: Tutorial[] = [
-  {
-    id: "1",
-    title: "Getting Started",
-    description: "Learn the basics of AI Tele Caller.",
-    duration: "5:00",
-    category: "Getting Started",
-  },
-  {
-    id: "2",
-    title: "AI Agents Overview",
-    description: "How to create and manage AI voice agents.",
-    duration: "6:00",
-    category: "AI Agents",
-  },
-  {
-    id: "3",
-    title: "Campaign Basics",
-    description: "How to build your first outbound campaign.",
-    duration: "7:00",
-    category: "Campaigns",
-  },
-  {
-    id: "4",
-    title: "Adding Credits",
-    description: "How to add credits to your account.",
-    duration: "4:00",
-    category: "Adding Credits",
-  },
-  {
-    id: "5",
-    title: "Lead Scoring",
-    description: "Understanding lead statuses and scoring.",
-    duration: "5:30",
-    category: "Leads",
-  },
-  {
-    id: "6",
-    title: "Support Guide",
-    description: "How to get help and contact support.",
-    duration: "3:00",
-    category: "Support",
-  },
-];
-
-const loadTutorials = (): Tutorial[] => {
-  try {
-    const raw = localStorage.getItem(TUTORIALS_KEY);
-    return raw ? JSON.parse(raw) : placeholderTutorials;
-  } catch {
-    return placeholderTutorials;
-  }
-};
+const categories = academyCategories;
+type Category = AcademyCategory;
 
 const AcademyPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
   const [activeCategory, setActiveCategory] = useState<Category>("Getting Started");
   const [searchQuery, setSearchQuery] = useState("");
-  const [tutorials] = useState<Tutorial[]>(loadTutorials);
+  const tutorials = academyLessons;
+  const { getProgress, recordProgress } = useAcademyProgress();
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -135,6 +73,12 @@ const AcademyPage = () => {
     devSignOut();
     navigate("/login", { replace: true });
   };
+
+  const selectedIndex = tutorials.findIndex((t) => t.id === selectedLessonId);
+  const selectedLesson = selectedIndex >= 0 ? tutorials[selectedIndex] : null;
+  const hasPrev = selectedIndex > 0;
+  const hasNext = selectedIndex >= 0 && selectedIndex < tutorials.length - 1;
+  const goToLesson = (id: string) => setSelectedLessonId(id);
 
   const filteredTutorials = tutorials.filter((t) => {
     const matchesCategory = t.category === activeCategory;
@@ -304,30 +248,122 @@ const AcademyPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredTutorials.map((tutorial) => (
-                <div
-                  key={tutorial.id}
-                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="relative aspect-video bg-black overflow-hidden flex items-center justify-center">
-                    <Play className="h-10 w-10 text-white/70" />
-                    <span className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 text-white text-xs font-medium flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {tutorial.duration}
-                    </span>
+              {filteredTutorials.map((tutorial) => {
+                const lessonProgress = getProgress(tutorial.id);
+                const watchedPct =
+                  lessonProgress && lessonProgress.duration > 0
+                    ? Math.min(100, (lessonProgress.position / lessonProgress.duration) * 100)
+                    : 0;
+                return (
+                  <div
+                    key={tutorial.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => goToLesson(tutorial.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") goToLesson(tutorial.id);
+                    }}
+                    className="group bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                  >
+                    <div className="relative aspect-video bg-black overflow-hidden flex items-center justify-center">
+                      {tutorial.thumbnail && (
+                        <img
+                          src={tutorial.thumbnail}
+                          alt={tutorial.title}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      )}
+                      <div className="relative h-12 w-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <Play className="h-6 w-6 text-white fill-white ml-0.5" />
+                      </div>
+                      {lessonProgress?.completed && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-500/90 text-white text-[10px] font-medium flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Completed
+                        </span>
+                      )}
+                      <span className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 text-white text-xs font-medium flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {tutorial.duration}
+                      </span>
+                      {watchedPct > 0 && (
+                        <div className="absolute bottom-0 inset-x-0 h-1 bg-white/20">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8]"
+                            style={{ width: `${watchedPct}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-base font-semibold text-slate-900 mb-1 line-clamp-1">
+                        {tutorial.title}
+                      </h3>
+                      <p className="text-sm text-slate-500 line-clamp-2">{tutorial.description}</p>
+                    </div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="text-base font-semibold text-slate-900 mb-1 line-clamp-1">
-                      {tutorial.title}
-                    </h3>
-                    <p className="text-sm text-slate-500 line-clamp-2">{tutorial.description}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </main>
+
+      {/* Lesson Player */}
+      <Dialog open={Boolean(selectedLesson)} onOpenChange={(open) => !open && setSelectedLessonId(null)}>
+        <DialogContent className="max-w-3xl">
+          {selectedLesson && (
+            <>
+              <DialogHeader>
+                <div className="flex flex-wrap items-center gap-2">
+                  <DialogTitle>{selectedLesson.title}</DialogTitle>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                    <Clock className="h-3 w-3" />
+                    {selectedLesson.duration}
+                  </span>
+                  {getProgress(selectedLesson.id)?.completed && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Completed
+                    </span>
+                  )}
+                </div>
+                <DialogDescription>{selectedLesson.description}</DialogDescription>
+              </DialogHeader>
+
+              <AcademyVideoPlayer
+                lessonId={selectedLesson.id}
+                src={selectedLesson.videoSrc}
+                initialPosition={getProgress(selectedLesson.id)?.position ?? 0}
+                autoPlay
+                onProgress={(time, duration) => recordProgress(selectedLesson.id, time, duration)}
+              />
+
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  disabled={!hasPrev}
+                  onClick={() => hasPrev && goToLesson(tutorials[selectedIndex - 1].id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous lesson
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasNext}
+                  onClick={() => hasNext && goToLesson(tutorials[selectedIndex + 1].id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                >
+                  Next lesson
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
