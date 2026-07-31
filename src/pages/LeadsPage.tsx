@@ -31,9 +31,12 @@ import {
   Loader2,
   UserRound,
   RefreshCw,
+  CreditCard,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
+import { useCredits } from "@/lib/creditsContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
@@ -64,6 +67,7 @@ const styles: Record<string, string> = {
 const LeadsPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
+  const { credits } = useCredits();
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [campaignNames, setCampaignNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -205,6 +209,17 @@ const LeadsPage = () => {
               <p className="text-sm text-slate-500 mt-1">Leads classified by your AI from every call.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
+                <CreditCard className="h-4 w-4 text-cyan-500" />
+                {credits.toLocaleString()} Credits
+              </div>
+              <button
+                className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+                aria-label="Settings"
+                onClick={() => navigate("/dashboard/settings")}
+              >
+                <Settings className="h-4 w-4" />
+              </button>
               <button
                 onClick={() => {
                   setLoading(true);

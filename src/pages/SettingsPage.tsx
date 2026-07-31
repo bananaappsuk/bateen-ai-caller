@@ -52,8 +52,7 @@ import { toast } from "@/hooks/use-toast";
 import { IntegrationCard, integrations } from "@/components/IntegrationCard";
 import { getBillingAccount, redirectToStripe } from "@/services/creditsService";
 import { planByTier } from "@/lib/plans";
-import { loadIntegrations, saveIntegrations } from "@/lib/agentTools";
-import { supabase } from "@/integrations/supabase/client";
+import { useCredits } from "@/lib/creditsContext";
 import { getNotificationSettings, saveNotificationSettings } from "@/services/notificationSettingsService";
 
 const navItems = [
@@ -125,35 +124,11 @@ const SettingsPage = () => {
     return match ?? "Profile";
   })();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const { credits } = useCredits();
   const [profile, setProfile] = useState({ fullName: "", companyName: "" });
   const [customAmount, setCustomAmount] = useState("");
-  const [billing, setBilling] = useState<{ credits: number; plan: string | null }>({ credits: 0, plan: null });
+  const [billing, setBilling] = useState<{ plan: string | null }>({ plan: null });
   const [topupBusy, setTopupBusy] = useState(false);
-  const [calConfig, setCalConfig] = useState(loadIntegrations());
-  const [calEvents, setCalEvents] = useState<{ id: number; title: string; length: number }[]>([]);
-  const [fetchingEvents, setFetchingEvents] = useState(false);
-
-  const handleFetchEvents = async () => {
-    if (!calConfig.calApiKey) {
-      toast({ title: "Enter your Cal.com API key first." });
-      return;
-    }
-    setFetchingEvents(true);
-    try {
-      const { data, error } = await supabase.functions.invoke<{ eventTypes?: { id: number; title: string; length: number }[]; error?: string }>(
-        "cal-event-types",
-        { body: { apiKey: calConfig.calApiKey } },
-      );
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setCalEvents(data?.eventTypes ?? []);
-      toast({ title: "Event types loaded", description: `${data?.eventTypes?.length ?? 0} found.` });
-    } catch (e) {
-      toast({ title: "Cal.com fetch failed", description: e instanceof Error ? e.message : "" });
-    } finally {
-      setFetchingEvents(false);
-    }
-  };
   const [notifications, setNotifications] = useState({
     email: user?.email ?? "",
     enableEmail: true,
@@ -237,7 +212,7 @@ const SettingsPage = () => {
 
   useEffect(() => {
     getBillingAccount()
-      .then((a) => setBilling({ credits: a?.credits ?? 0, plan: a?.plan_tier ?? null }))
+      .then((a) => setBilling({ plan: a?.plan_tier ?? null }))
       .catch(() => undefined);
   }, []);
 
@@ -439,7 +414,7 @@ const SettingsPage = () => {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
                 <CreditCard className="h-4 w-4 text-cyan-500" />
-                {billing.credits.toLocaleString()} Credits
+                {credits.toLocaleString()} Credits
               </div>
               <button
                 onClick={() => changeTab("Billing")}
@@ -528,8 +503,8 @@ const SettingsPage = () => {
                     <p className="text-xs uppercase tracking-wide text-slate-500 font-medium">
                       Current Balance
                     </p>
-                    <p className="mt-2 text-3xl font-bold text-slate-900">{billing.credits.toLocaleString()} Credits</p>
-                    <p className="mt-1 text-xs text-slate-500">≈ {billing.credits.toLocaleString()} minutes of calling</p>
+                    <p className="mt-2 text-3xl font-bold text-slate-900">{credits.toLocaleString()} Credits</p>
+                    <p className="mt-1 text-xs text-slate-500">≈ {credits.toLocaleString()} minutes of calling</p>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
                     <p className="text-xs uppercase tracking-wide text-slate-500 font-medium">
@@ -989,82 +964,6 @@ const SettingsPage = () => {
                   <p className="text-sm text-slate-500 mt-1">
                     Connect your favourite tools to automate follow-ups and scheduling.
                   </p>
-                </div>
-                <div className="rounded-2xl border border-slate-100 bg-white p-5">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-base">📅</span>
-                    <h3 className="text-base font-semibold text-slate-900">Cal.com Booking</h3>
-                  </div>
-                  <p className="text-sm text-slate-500 mb-4">
-                    Let agents check availability and book meetings during calls. Get your API key at
-                    app.cal.com/settings/developer/api-keys.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="calKey">API Key</Label>
-                      <Input
-                        id="calKey"
-                        type="password"
-                        value={calConfig.calApiKey}
-                        onChange={(e) => setCalConfig({ ...calConfig, calApiKey: e.target.value })}
-                        placeholder="cal_live_…"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="calEvent">Event Type</Label>
-                      {calEvents.length > 0 ? (
-                        <Select
-                          value={calConfig.calEventTypeId}
-                          onValueChange={(v) => setCalConfig({ ...calConfig, calEventTypeId: v })}
-                        >
-                          <SelectTrigger id="calEvent">
-                            <SelectValue placeholder="Choose event type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {calEvents.map((ev) => (
-                              <SelectItem key={ev.id} value={String(ev.id)}>
-                                {ev.title} ({ev.length}m)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          id="calEvent"
-                          value={calConfig.calEventTypeId}
-                          onChange={(e) => setCalConfig({ ...calConfig, calEventTypeId: e.target.value })}
-                          placeholder="e.g. 123456"
-                        />
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="calTz">Timezone</Label>
-                      <Input
-                        id="calTz"
-                        value={calConfig.calTimezone}
-                        onChange={(e) => setCalConfig({ ...calConfig, calTimezone: e.target.value })}
-                        placeholder="Europe/London"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={handleFetchEvents}
-                      disabled={fetchingEvents}
-                      className="inline-flex items-center px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
-                    >
-                      {fetchingEvents ? "Fetching…" : "Fetch event types"}
-                    </button>
-                    <button
-                      onClick={() => {
-                        saveIntegrations(calConfig);
-                        toast({ title: "Cal.com saved", description: "New agents can now book meetings." });
-                      }}
-                      className="inline-flex items-center px-4 py-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold hover:opacity-95"
-                    >
-                      Save Cal.com
-                    </button>
-                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {integrations.map((integration) => (

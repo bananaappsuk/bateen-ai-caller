@@ -32,9 +32,6 @@ import {
   Settings,
   Plus,
   MessageSquare,
-  FileText,
-  Code,
-  Activity,
   Ticket,
   X,
   Clock,
@@ -54,6 +51,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
+import { useCredits } from "@/lib/creditsContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
@@ -63,12 +61,6 @@ const navItems = [
   { icon: SettingsIcon, label: "Settings", href: "/dashboard/settings" },
   { icon: GraduationCap, label: "Academy", href: "/dashboard/academy", locked: true },
   { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
-];
-
-const quickLinks = [
-  { icon: FileText, label: "Documentation", href: "#" },
-  { icon: Code, label: "API Reference", href: "#" },
-  { icon: Activity, label: "System Status", href: "#" },
 ];
 
 type TicketCategory = "General" | "Campaigns" | "AI Agents" | "Billing" | "Technical";
@@ -103,6 +95,7 @@ const statusColors: Record<SupportTicket["status"], string> = {
 const SupportPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
+  const { credits } = useCredits();
   const [tickets, setTickets] = useState<SupportTicket[]>(() => {
     try {
       const raw = localStorage.getItem(TICKETS_KEY);
@@ -243,7 +236,7 @@ const SupportPage = () => {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
                 <CreditCard className="h-4 w-4 text-cyan-500" />
-                0 Credits
+                {credits.toLocaleString()} Credits
               </div>
               <button
                 className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
@@ -262,94 +255,68 @@ const SupportPage = () => {
             </div>
           </div>
 
-          {/* Two-column layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Tickets */}
-            <Card className="lg:col-span-2 bg-white rounded-2xl border-slate-100 shadow-sm">
-              <CardHeader className="pb-4 flex flex-row items-center justify-between">
-                <CardTitle className="text-lg font-semibold text-slate-900">Your Tickets</CardTitle>
-                <span className="text-xs text-slate-500">{tickets.length} total</span>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                {tickets.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="h-16 w-16 mx-auto rounded-full bg-slate-50 flex items-center justify-center mb-4">
-                      <Ticket className="h-8 w-8 text-slate-300" />
-                    </div>
-                    <h3 className="text-base font-semibold text-slate-900">No tickets found</h3>
-                    <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-                      You have not created any support tickets yet. Click "New Ticket" to get help.
-                    </p>
+          {/* Tickets */}
+          <Card className="bg-white rounded-2xl border-slate-100 shadow-sm">
+            <CardHeader className="pb-4 flex flex-row items-center justify-between">
+              <CardTitle className="text-lg font-semibold text-slate-900">Your Tickets</CardTitle>
+              <span className="text-xs text-slate-500">{tickets.length} total</span>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              {tickets.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="h-16 w-16 mx-auto rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                    <Ticket className="h-8 w-8 text-slate-300" />
                   </div>
-                ) : (
-                  <div className="divide-y divide-slate-100">
-                    {tickets.map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium text-slate-400">{ticket.id}</span>
-                            <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", statusColors[ticket.status])}>
-                              {ticket.status}
-                            </span>
-                            <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", priorityColors[ticket.priority])}>
-                              {ticket.priority}
-                            </span>
-                          </div>
-                          <h4 className="text-sm font-semibold text-slate-900">{ticket.subject}</h4>
-                          <p className="text-sm text-slate-500 mt-0.5 line-clamp-2">{ticket.description}</p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
-                            <span className="flex items-center gap-1">
-                              <MessageSquare className="h-3 w-3" />
-                              {ticket.category}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {ticket.createdAt}
-                            </span>
-                          </div>
-                        </div>
-                        {ticket.status !== "Closed" && ticket.status !== "Resolved" && (
-                          <button
-                            onClick={() => handleClose(ticket.id)}
-                            className="shrink-0 self-start p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
-                            aria-label="Close ticket"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Links */}
-            <Card className="bg-white rounded-2xl border-slate-100 shadow-sm h-fit">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold text-slate-900">Quick Links</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                <div className="space-y-2">
-                  {quickLinks.map((link) => (
-                    <a
-                      key={link.label}
-                      href={link.href}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 hover:bg-slate-50 hover:border-slate-200 transition-colors group"
+                  <h3 className="text-base font-semibold text-slate-900">No tickets found</h3>
+                  <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+                    You have not created any support tickets yet. Click "New Ticket" to get help.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {tickets.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
                     >
-                      <div className="h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center group-hover:bg-white transition-colors">
-                        <link.icon className="h-4 w-4 text-slate-500" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-slate-400">{ticket.id}</span>
+                          <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", statusColors[ticket.status])}>
+                            {ticket.status}
+                          </span>
+                          <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", priorityColors[ticket.priority])}>
+                            {ticket.priority}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-semibold text-slate-900">{ticket.subject}</h4>
+                        <p className="text-sm text-slate-500 mt-0.5 line-clamp-2">{ticket.description}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="h-3 w-3" />
+                            {ticket.category}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {ticket.createdAt}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-sm font-medium text-slate-700">{link.label}</span>
-                    </a>
+                      {ticket.status !== "Closed" && ticket.status !== "Resolved" && (
+                        <button
+                          onClick={() => handleClose(ticket.id)}
+                          className="shrink-0 self-start p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+                          aria-label="Close ticket"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
 

@@ -24,11 +24,6 @@ export async function getBillingAccount(): Promise<BillingAccount | null> {
   return created;
 }
 
-export async function getCredits(): Promise<number> {
-  const account = await getBillingAccount();
-  return account?.credits ?? 0;
-}
-
 export async function listTransactions(limit = 50): Promise<CreditTransaction[]> {
   const { data, error } = await supabase
     .from("credit_transactions")

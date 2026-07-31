@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ai-tele-caller-logo.png";
+import { useCredits } from "@/lib/creditsContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
@@ -61,6 +62,7 @@ const statusStyles: Record<CampaignStatus, string> = {
 const CampaignsPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
+  const { credits } = useCredits();
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,6 +196,17 @@ const CampaignsPage = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
+                <CreditCard className="h-4 w-4 text-cyan-500" />
+                {credits.toLocaleString()} Credits
+              </div>
+              <button
+                className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+                aria-label="Settings"
+                onClick={() => navigate("/dashboard/settings")}
+              >
+                <Settings className="h-4 w-4" />
+              </button>
               <button
                 onClick={openCreate}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white text-sm font-semibold shadow-sm hover:opacity-95 transition-opacity"

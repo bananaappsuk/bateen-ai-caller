@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { getCredits } from "@/services/creditsService";
+import { useCredits } from "@/lib/creditsContext";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -51,7 +51,6 @@ interface Stats {
   totalCalls: number;
   interested: number;
   avgDurationMin: number;
-  credits: number;
 }
 
 interface TopLead {
@@ -66,7 +65,8 @@ const DashboardPage = () => {
   const [bannerOpen, setBannerOpen] = useState(
     () => typeof window !== "undefined" && !localStorage.getItem("dashboard_onboarding_dismissed"),
   );
-  const [stats, setStats] = useState<Stats>({ totalCalls: 0, interested: 0, avgDurationMin: 0, credits: 0 });
+  const { credits } = useCredits();
+  const [stats, setStats] = useState<Stats>({ totalCalls: 0, interested: 0, avgDurationMin: 0 });
   const [volume, setVolume] = useState<{ day: string; calls: number }[]>(
     DAYS.map((d) => ({ day: d, calls: 0 })),
   );
@@ -81,11 +81,10 @@ const DashboardPage = () => {
     (async () => {
       try {
         const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const [callsCount, interestedCount, credits, recentCalls, interestedLeads, durations] =
+        const [callsCount, interestedCount, recentCalls, interestedLeads, durations] =
           await Promise.all([
             supabase.from("calls").select("id", { count: "exact", head: true }),
             supabase.from("leads").select("id", { count: "exact", head: true }).eq("lead_status", "Interested"),
-            getCredits(),
             supabase.from("calls").select("created_at").gte("created_at", since),
             supabase.from("leads").select("id,name,phone").eq("lead_status", "Interested").limit(5),
             supabase.from("calls").select("duration_ms").not("duration_ms", "is", null).limit(500),
@@ -100,7 +99,6 @@ const DashboardPage = () => {
           totalCalls: callsCount.count ?? 0,
           interested: interestedCount.count ?? 0,
           avgDurationMin: Math.round(avgMin * 10) / 10,
-          credits,
         });
 
         // 7-day call volume buckets.
@@ -134,7 +132,7 @@ const DashboardPage = () => {
     { title: "Total Calls", value: stats.totalCalls.toLocaleString(), icon: Phone, iconColor: "text-cyan-500", iconBg: "bg-cyan-50" },
     { title: "Interested Leads", value: stats.interested.toLocaleString(), icon: TrendingUp, iconColor: "text-purple-500", iconBg: "bg-purple-50" },
     { title: "Avg. Duration", value: `${stats.avgDurationMin}m`, icon: Clock, iconColor: "text-pink-500", iconBg: "bg-pink-50" },
-    { title: "Credits", value: stats.credits.toLocaleString(), icon: CreditCard, iconColor: "text-emerald-500", iconBg: "bg-emerald-50" },
+    { title: "Credits", value: credits.toLocaleString(), icon: CreditCard, iconColor: "text-emerald-500", iconBg: "bg-emerald-50" },
   ];
 
   const onboardingSteps = [
@@ -211,7 +209,7 @@ const DashboardPage = () => {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
                 <CreditCard className="h-4 w-4 text-cyan-500" />
-                {stats.credits.toLocaleString()} Credits
+                {credits.toLocaleString()} Credits
               </div>
               <button
                 onClick={() => navigate("/dashboard/settings?tab=Billing")}
