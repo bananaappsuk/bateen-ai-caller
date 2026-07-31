@@ -24,7 +24,6 @@ import {
   CreditCard,
   Settings,
   Play,
-  Search,
   Clock,
   BookOpen,
   CheckCircle2,
@@ -36,6 +35,7 @@ import logo from "@/assets/ai-tele-caller-logo.png";
 import { academyCategories, academyLessons, type AcademyCategory } from "@/data/academyLessons";
 import { useAcademyProgress } from "@/hooks/use-academy-progress";
 import AcademyVideoPlayer from "@/components/academy/AcademyVideoPlayer";
+import { useCredits } from "@/lib/creditsContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
@@ -53,8 +53,8 @@ type Category = AcademyCategory;
 const AcademyPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
+  const { credits } = useCredits();
   const [activeCategory, setActiveCategory] = useState<Category>("Getting Started");
-  const [searchQuery, setSearchQuery] = useState("");
   const tutorials = academyLessons;
   const { getProgress, recordProgress } = useAcademyProgress();
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
@@ -80,14 +80,7 @@ const AcademyPage = () => {
   const hasNext = selectedIndex >= 0 && selectedIndex < tutorials.length - 1;
   const goToLesson = (id: string) => setSelectedLessonId(id);
 
-  const filteredTutorials = tutorials.filter((t) => {
-    const matchesCategory = t.category === activeCategory;
-    const matchesSearch =
-      searchQuery.trim() === "" ||
-      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const filteredTutorials = tutorials.filter((t) => t.category === activeCategory);
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8F9FB]">
@@ -167,7 +160,7 @@ const AcademyPage = () => {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
                 <CreditCard className="h-4 w-4 text-cyan-500" />
-                0 Credits
+                {credits.toLocaleString()} Credits
               </div>
               <button
                 className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
@@ -198,18 +191,6 @@ const AcademyPage = () => {
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-white/10" />
             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-32 w-32 rounded-full bg-white/10" />
-          </div>
-
-          {/* Search */}
-          <div className="relative mb-6 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search tutorials..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 shadow-sm"
-            />
           </div>
 
           {/* Category Tabs */}

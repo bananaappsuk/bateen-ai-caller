@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute, AdminRoute } from "@/lib/auth";
+import { CreditsProvider } from "@/lib/creditsContext";
 import Index from "./pages/Index.tsx";
 import ContactPage from "./pages/ContactPage.tsx";
 import FAQPage from "./pages/FAQPage.tsx";
@@ -41,60 +42,62 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Public */}
-            <Route path="/" element={<Index />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/faq" element={<FAQPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/finish-registration" element={<Navigate to="/onboarding" replace />} />
+          <CreditsProvider>
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<Index />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/faq" element={<FAQPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/finish-registration" element={<Navigate to="/onboarding" replace />} />
 
-            {/* Protected */}
-            <Route path="/onboarding" element={P(<OnboardingPage />)} />
-            <Route path="/dashboard" element={P(<DashboardPage />)} />
-            <Route path="/ai-agents" element={P(<AIAgentsPage />)} />
-            <Route path="/ai-agents/create" element={P(<CreateAgentPage />)} />
-            <Route path="/ai-agents/:id/edit" element={P(<EditAgentPage />)} />
-            {/* Every agent automatically dials from the single platform Twilio
-                number (src/lib/platformConfig.ts) — there is no per-agent
-                number to link anymore. */}
-            <Route path="/ai-agents/:id/number" element={<Navigate to="/ai-agents" replace />} />
-            <Route path="/dashboard/agents" element={P(<AIAgentsPage />)} />
-            <Route path="/dashboard/agents/create" element={P(<CreateAgentPage />)} />
-            <Route path="/dashboard/agents/:id/edit" element={P(<EditAgentPage />)} />
-            <Route path="/dashboard/agents/:id/number" element={<Navigate to="/ai-agents" replace />} />
-            <Route path="/campaigns" element={P(<CampaignsPage />)} />
-            <Route path="/campaigns/create" element={P(<CreateCampaignPage />)} />
-            <Route path="/campaigns/:id" element={P(<CampaignDetailPage />)} />
-            <Route path="/dashboard/campaigns" element={P(<CampaignsPage />)} />
-            <Route path="/dashboard/campaigns/create" element={P(<CreateCampaignPage />)} />
-            <Route path="/dashboard/campaigns/:id" element={P(<CampaignDetailPage />)} />
-            <Route path="/leads" element={P(<LeadsPage />)} />
-            <Route path="/leads/:id" element={P(<LeadDetailPage />)} />
-            <Route path="/dashboard/leads" element={P(<LeadsPage />)} />
-            <Route path="/dashboard/leads/:id" element={P(<LeadDetailPage />)} />
-            <Route path="/settings" element={P(<SettingsPage />)} />
-            <Route path="/dashboard/settings" element={P(<SettingsPage />)} />
-            <Route path="/academy" element={P(<AcademyPage />)} />
-            <Route path="/dashboard/academy" element={P(<AcademyPage />)} />
-            <Route path="/support" element={P(<SupportPage />)} />
-            <Route path="/dashboard/support" element={P(<SupportPage />)} />
-            <Route path="/plans" element={P(<ChoosePlanPage />)} />
-            <Route path="/dashboard/plans" element={P(<ChoosePlanPage />)} />
-            <Route path="/credits" element={P(<Navigate to="/dashboard/settings?tab=Billing" replace />)} />
-            <Route path="/dashboard/credits" element={P(<Navigate to="/dashboard/settings?tab=Billing" replace />)} />
+              {/* Protected */}
+              <Route path="/onboarding" element={P(<OnboardingPage />)} />
+              <Route path="/dashboard" element={P(<DashboardPage />)} />
+              <Route path="/ai-agents" element={P(<AIAgentsPage />)} />
+              <Route path="/ai-agents/create" element={P(<CreateAgentPage />)} />
+              <Route path="/ai-agents/:id/edit" element={P(<EditAgentPage />)} />
+              {/* Every agent automatically dials from the single platform Twilio
+                  number (src/lib/platformConfig.ts) — there is no per-agent
+                  number to link anymore. */}
+              <Route path="/ai-agents/:id/number" element={<Navigate to="/ai-agents" replace />} />
+              <Route path="/dashboard/agents" element={P(<AIAgentsPage />)} />
+              <Route path="/dashboard/agents/create" element={P(<CreateAgentPage />)} />
+              <Route path="/dashboard/agents/:id/edit" element={P(<EditAgentPage />)} />
+              <Route path="/dashboard/agents/:id/number" element={<Navigate to="/ai-agents" replace />} />
+              <Route path="/campaigns" element={P(<CampaignsPage />)} />
+              <Route path="/campaigns/create" element={P(<CreateCampaignPage />)} />
+              <Route path="/campaigns/:id" element={P(<CampaignDetailPage />)} />
+              <Route path="/dashboard/campaigns" element={P(<CampaignsPage />)} />
+              <Route path="/dashboard/campaigns/create" element={P(<CreateCampaignPage />)} />
+              <Route path="/dashboard/campaigns/:id" element={P(<CampaignDetailPage />)} />
+              <Route path="/leads" element={P(<LeadsPage />)} />
+              <Route path="/leads/:id" element={P(<LeadDetailPage />)} />
+              <Route path="/dashboard/leads" element={P(<LeadsPage />)} />
+              <Route path="/dashboard/leads/:id" element={P(<LeadDetailPage />)} />
+              <Route path="/settings" element={P(<SettingsPage />)} />
+              <Route path="/dashboard/settings" element={P(<SettingsPage />)} />
+              <Route path="/academy" element={P(<AcademyPage />)} />
+              <Route path="/dashboard/academy" element={P(<AcademyPage />)} />
+              <Route path="/support" element={P(<SupportPage />)} />
+              <Route path="/dashboard/support" element={P(<SupportPage />)} />
+              <Route path="/plans" element={P(<ChoosePlanPage />)} />
+              <Route path="/dashboard/plans" element={P(<ChoosePlanPage />)} />
+              <Route path="/credits" element={P(<Navigate to="/dashboard/settings?tab=Billing" replace />)} />
+              <Route path="/dashboard/credits" element={P(<Navigate to="/dashboard/settings?tab=Billing" replace />)} />
 
-            {/* Admin */}
-            <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
-            <Route path="/dashboard/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
-            <Route path="/dashboard/tenant-admin" element={<AdminRoute><TenantAdminPage /></AdminRoute>} />
+              {/* Admin */}
+              <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+              <Route path="/dashboard/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+              <Route path="/dashboard/tenant-admin" element={<AdminRoute><TenantAdminPage /></AdminRoute>} />
 
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </CreditsProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

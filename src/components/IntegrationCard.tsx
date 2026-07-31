@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Calendar, Building2, CalendarDays, MessageCircle, Mail } from "lucide-react";
+import { CalendarClock, Calendar, Building2, CalendarDays, MessageCircle, Mail } from "lucide-react";
 
 export type Integration = {
   id: string;
@@ -11,6 +11,14 @@ export type Integration = {
 };
 
 export const integrations: Integration[] = [
+  {
+    id: "cal-com",
+    name: "Cal.com",
+    description: "Let agents check availability and book meetings automatically during calls.",
+    icon: CalendarClock,
+    iconBg: "bg-gradient-to-br from-slate-700 to-slate-900",
+    status: "coming_soon",
+  },
   {
     id: "calendly",
     name: "Calendly",

@@ -7,7 +7,6 @@ import {
   buildAgentTools,
   buildDeliveryGuidance,
   buildToolGuidance,
-  loadIntegrations,
   parseAgentTools,
   stripAppendedGuidance,
 } from "@/lib/agentTools";
@@ -47,7 +46,6 @@ import {
   ArrowLeft,
   PhoneOff,
   PhoneForwarded,
-  CalendarCheck,
   Voicemail,
   Gauge,
   Waves,
@@ -99,7 +97,6 @@ const EditAgentPage = () => {
     responseSpeed: 5,
     hangUpOnVoicemail: true,
     endCallAutomatically: true,
-    bookCalSlot: false,
     transferToHuman: false,
     transferNumber: "",
   });
@@ -148,7 +145,6 @@ const EditAgentPage = () => {
           responseSpeed: Math.round(((remoteAgent.responsiveness as number | undefined) ?? 0.5) * 10) || 5,
           hangUpOnVoicemail: voicemail?.action?.type === "hangup",
           endCallAutomatically: toolState.endCallEnabled,
-          bookCalSlot: toolState.bookCalEnabled,
           transferToHuman: toolState.transferEnabled,
           transferNumber: toolState.transferNumber,
         });
@@ -180,18 +176,11 @@ const EditAgentPage = () => {
     const name = form.internalName.trim();
     const prompt = form.prompt.trim();
 
-    const integrations = loadIntegrations();
-    if (form.bookCalSlot && !integrations.calApiKey) {
-      toast("Cal.com isn't configured (Settings → Integrations) — booking tool skipped.");
-    }
+    // Transfer to a Human's toggle is frozen in the UI (feature disabled for
+    // now), so this just carries forward whatever the agent already had —
+    // existing agents keep working exactly as before.
     const toolConfig = {
       endCall: { enabled: form.endCallAutomatically },
-      calBooking: {
-        enabled: form.bookCalSlot,
-        calApiKey: integrations.calApiKey,
-        eventTypeId: integrations.calEventTypeId,
-        timezone: integrations.calTimezone,
-      },
       transfer: { enabled: form.transferToHuman, phoneNumber: form.transferNumber.trim() },
     };
     const tools = buildAgentTools(toolConfig);
@@ -220,7 +209,6 @@ const EditAgentPage = () => {
           ambience: form.ambience,
           responseSpeed: form.responseSpeed,
           endCallAutomatically: form.endCallAutomatically,
-          bookCalSlot: form.bookCalSlot,
           transferToHuman: form.transferToHuman,
         },
       });
@@ -444,38 +432,26 @@ const EditAgentPage = () => {
                         onCheckedChange={(c) => setForm({ ...form, endCallAutomatically: c })}
                       />
                     </div>
-                    <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white">
-                      <div className="flex items-center gap-3">
-                        <CalendarCheck className="h-4 w-4 text-slate-500" />
-                        <div>
-                          <p className="text-sm font-medium text-slate-900">Book a Cal.com Slot</p>
-                          <p className="text-xs text-slate-500">Allow the agent to book meetings via Cal.com.</p>
-                        </div>
-                      </div>
-                      <Switch
-                        checked={form.bookCalSlot}
-                        onCheckedChange={(c) => setForm({ ...form, bookCalSlot: c })}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white">
+                    <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white opacity-75">
                       <div className="flex items-center gap-3">
                         <PhoneForwarded className="h-4 w-4 text-slate-500" />
                         <div>
-                          <p className="text-sm font-medium text-slate-900">Transfer to a Human</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-slate-900">Transfer to a Human</p>
+                            <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                              Coming Soon
+                            </span>
+                          </div>
                           <p className="text-xs text-slate-500">Warm-transfer the call to a human agent when needed.</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            This feature will be available in a future update.
+                          </p>
                         </div>
                       </div>
-                      <Switch
-                        checked={form.transferToHuman}
-                        onCheckedChange={(c) => setForm({ ...form, transferToHuman: c })}
-                      />
+                      <Switch checked={form.transferToHuman} disabled />
                     </div>
                     {form.transferToHuman && (
-                      <Input
-                        value={form.transferNumber}
-                        onChange={(e) => setForm({ ...form, transferNumber: e.target.value })}
-                        placeholder="Transfer-to number (E.164, e.g. +447700900123)"
-                      />
+                      <Input value={form.transferNumber} readOnly disabled />
                     )}
                   </div>
                 </div>
