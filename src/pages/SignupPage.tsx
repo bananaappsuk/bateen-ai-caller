@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { signUp } from "@/lib/devAuth";
 import logo from "@/assets/ai-tele-caller-logo.png";
@@ -45,14 +46,17 @@ const SignupPage = () => {
           />
           <Input
             type="email"
+            name="username"
+            autoComplete="username"
             placeholder="you@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             className="h-12 w-full rounded-xl border-slate-200 px-4 text-base focus-visible:ring-[#00D4FF]"
           />
-          <Input
-            type="password"
+          <PasswordInput
+            name="password"
+            autoComplete="new-password"
             placeholder="Password (min 6 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

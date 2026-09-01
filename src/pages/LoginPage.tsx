@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/ai-tele-caller-logo.png";
 import { signIn, sendPasswordReset } from "@/lib/devAuth";
@@ -69,6 +70,8 @@ const LoginPage = () => {
           <form onSubmit={handleContinue} className="space-y-4">
             <Input
               type="email"
+              name="username"
+              autoComplete="username"
               placeholder="you@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -87,6 +90,16 @@ const LoginPage = () => {
 
         {step === "password" && (
           <form onSubmit={handlePasswordSignIn} className="space-y-4">
+            {/* Hidden username so the browser sees a full credential pair in the
+                password-step form and offers to save the login. */}
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              value={email}
+              readOnly
+              hidden
+            />
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-500 truncate">{email}</span>
               <button
@@ -111,9 +124,10 @@ const LoginPage = () => {
                   Forgot password?
                 </button>
               </div>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
+                name="password"
+                autoComplete="current-password"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

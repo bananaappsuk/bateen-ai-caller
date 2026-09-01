@@ -66,9 +66,14 @@ export async function devSignOut(): Promise<void> {
   setCurrentUser(null);
 }
 
+// Canonical app origin for links that leave the app (e.g. password-reset
+// emails). Pinned via env so a reset triggered from localhost/staging still
+// points at production; falls back to the current origin when unset.
+const SITE_URL = import.meta.env.VITE_PUBLIC_SITE_URL || window.location.origin;
+
 export async function sendPasswordReset(email: string): Promise<void> {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: `${SITE_URL}/reset-password`,
   });
   if (error) throw error;
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/ai-tele-caller-logo.png";
 import { updatePassword } from "@/lib/devAuth";
@@ -59,8 +59,9 @@ const ResetPasswordPage = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              type="password"
+            <PasswordInput
+              name="new-password"
+              autoComplete="new-password"
               placeholder="New password (min 6 characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -69,8 +70,9 @@ const ResetPasswordPage = () => {
               autoFocus
               className="h-12 w-full rounded-xl border-slate-200 px-4 text-base focus-visible:ring-[#00D4FF]"
             />
-            <Input
-              type="password"
+            <PasswordInput
+              name="confirm-password"
+              autoComplete="new-password"
               placeholder="Confirm new password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
