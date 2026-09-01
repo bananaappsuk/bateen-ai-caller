@@ -71,11 +71,18 @@ export async function devSignOut(): Promise<void> {
 // points at production; falls back to the current origin when unset.
 const SITE_URL = import.meta.env.VITE_PUBLIC_SITE_URL || window.location.origin;
 
-export async function sendPasswordReset(email: string): Promise<void> {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${SITE_URL}/reset-password`,
+// Requests a reset email but, unlike the stock flow, reports whether an account
+// actually exists so the UI can say "no account exists" instead of a misleading
+// "email sent". The existence check runs in the request-password-reset edge
+// function (service-role only). Returns true if an account exists and the email
+// was sent, false if no account matches that address.
+export async function sendPasswordReset(email: string): Promise<boolean> {
+  const { data, error } = await supabase.functions.invoke("request-password-reset", {
+    body: { email, redirectTo: `${SITE_URL}/reset-password` },
   });
   if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return Boolean(data?.exists);
 }
 
 export async function updatePassword(newPassword: string): Promise<void> {

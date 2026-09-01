@@ -46,8 +46,12 @@ const LoginPage = () => {
     }
     setSubmitting(true);
     try {
-      await sendPasswordReset(email);
-      setInfo(`We've emailed a password reset link to ${email}.`);
+      const exists = await sendPasswordReset(email);
+      if (exists) {
+        setInfo(`We've emailed a password reset link to ${email}.`);
+      } else {
+        setError(`No account exists with the email ${email}.`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send a reset link.");
     } finally {
