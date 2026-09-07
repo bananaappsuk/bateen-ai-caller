@@ -6,6 +6,11 @@
 
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { normalizePhoneDetailed } from "@/lib/phone";
+
+// Phone normalisation lives in lib/phone.ts (dependency-free so the landing
+// page can use it too); re-exported here for existing callers and tests.
+export { normalizePhone, normalizePhoneDetailed, type PhoneNormalizeResult } from "@/lib/phone";
 
 export interface ParsedLead {
   name: string | null;
@@ -41,64 +46,7 @@ const NAME_KEYS = [
   "name", "fullname", "customername", "contact", "contactname", "firstname",
   "leadname", "clientname",
 ].map(normHeader);
-const E164 = /^\+[1-9]\d{6,14}$/;
-// Excel's "General" number format renders/saves any long digit string (like a
-// phone number) as lossy scientific notation, e.g. 4.47887E+11 — the original
-// digits are gone for good; this can only be detected, never recovered.
-const SCIENTIFIC_NOTATION = /^\d(\.\d+)?e\+?\d+$/i;
 
-export interface PhoneNormalizeResult {
-  phone: string | null;
-  reason?: string;
-}
-
-// Normalize a raw phone string to E.164, with a human-readable reason when it
-// can't be. `defaultCountryCode` (e.g. "+44") is used as a fallback to fix
-// numbers that are missing their country code (a local "07700 900123" style
-// entry, or one with the country code but no leading "+").
-export function normalizePhoneDetailed(raw: string, defaultCountryCode?: string): PhoneNormalizeResult {
-  const original = (raw ?? "").trim();
-  if (!original) return { phone: null, reason: "Phone number is empty." };
-
-  // Unwrap the `="…"` text-escape some spreadsheets (and our own template)
-  // use to stop Excel from touching a numeric-looking value.
-  const formulaMatch = /^="(.*)"$/.exec(original);
-  let p = formulaMatch ? formulaMatch[1] : original;
-
-  if (SCIENTIFIC_NOTATION.test(p.replace(/\s/g, ""))) {
-    return {
-      phone: null,
-      reason:
-        `"${original}" looks like Excel converted this number to scientific notation — the original digits ` +
-        "are lost and can't be recovered. Format the phone column as Text in Excel (or open with a leading " +
-        "apostrophe, e.g. '+447700900123) before entering numbers, then re-upload.",
-    };
-  }
-
-  p = p.replace(/[\s()\-.']/g, "");
-  if (p.startsWith("00")) p = "+" + p.slice(2);
-  if (E164.test(p)) return { phone: p };
-
-  if (defaultCountryCode) {
-    const ccDigits = defaultCountryCode.replace(/^\+/, "");
-    const digits = p.replace(/\D/g, "");
-    if (digits) {
-      const candidate = digits.startsWith(ccDigits)
-        ? `+${digits}`
-        : `+${ccDigits}${digits.replace(/^0/, "")}`;
-      if (E164.test(candidate)) return { phone: candidate };
-    }
-  }
-
-  return {
-    phone: null,
-    reason: `"${original}" isn't a valid phone number. Use international format, e.g. +447700900123.`,
-  };
-}
-
-export function normalizePhone(raw: string, defaultCountryCode?: string): string | null {
-  return normalizePhoneDetailed(raw, defaultCountryCode).phone;
-}
 
 // ---------- Lead-list templates ----------
 // Single source of truth for the downloadable template, so what we hand out is

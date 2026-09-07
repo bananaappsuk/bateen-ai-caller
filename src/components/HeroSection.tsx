@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeUkPhone } from "@/lib/phone";
 import { Phone, Zap, BarChart3 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
 import StatsBar from "@/components/StatsBar";
@@ -21,10 +22,12 @@ const HeroSection = () => {
 
   const handleDemo = async (e: React.FormEvent) => {
     e.preventDefault();
-    const phone = demoPhone.trim();
-    if (!phone) return;
-    if (!/^\+[1-9]\d{6,14}$/.test(phone)) {
-      toast.error("Enter your number in international format, e.g. +447700900123.");
+    // Accept any way a UK number is normally written (07700 900123,
+    // +44 7700 900123, (07700) 900123, 0044…) and send Retell clean E.164.
+    const phone = normalizeUkPhone(demoPhone);
+    if (!demoPhone.trim()) return;
+    if (!phone) {
+      toast.error("That doesn't look like a valid UK number. Try 07700 900123.");
       return;
     }
     setSending(true);
@@ -149,7 +152,7 @@ const HeroSection = () => {
                     type="tel"
                     value={demoPhone}
                     onChange={(e) => setDemoPhone(e.target.value)}
-                    placeholder="+44 7700 900123"
+                    placeholder="07700 900123"
                     className="h-11 rounded-xl border border-slate-200 px-4 text-base bg-white/90 focus:outline-none focus:ring-2 focus:ring-[#00D4FF]"
                     required
                   />

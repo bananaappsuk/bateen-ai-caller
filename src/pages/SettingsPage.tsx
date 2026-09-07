@@ -47,6 +47,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { normalizeUkPhone } from "@/lib/phone";
 import logo from "@/assets/ai-tele-caller-logo.png";
 import { toast } from "@/hooks/use-toast";
 import { IntegrationCard, integrations } from "@/components/IntegrationCard";
@@ -285,13 +286,15 @@ const SettingsPage = () => {
   };
 
   const handleAddDnc = () => {
-    const trimmed = dncInput.replace(/\s+/g, "");
-    if (!trimmed) {
+    if (!dncInput.trim()) {
       setDncError("Please enter a phone number.");
       return;
     }
-    if (!/^\+[1-9]\d{7,14}$/.test(trimmed)) {
-      setDncError("Enter a valid number in international format (E.164), e.g. +447700900123.");
+    // Accept any way a UK number is written; the list is stored in E.164 so it
+    // matches the lead numbers the dialer checks it against.
+    const trimmed = normalizeUkPhone(dncInput);
+    if (!trimmed) {
+      setDncError("Enter a valid UK number, e.g. 07700 900123.");
       return;
     }
     if (dncList.some((e) => e.number === trimmed)) {
@@ -869,7 +872,7 @@ const SettingsPage = () => {
                           handleAddDnc();
                         }
                       }}
-                      placeholder="e.g. +447700900123"
+                      placeholder="e.g. 07700 900123"
                       className="h-11 flex-1"
                     />
                     <button
@@ -884,7 +887,7 @@ const SettingsPage = () => {
                     <p className="text-sm text-red-600">{dncError}</p>
                   )}
                   <p className="text-xs text-slate-500">
-                    Use international (E.164) format starting with a country code, e.g. +44 for the UK.
+                    Enter a UK number in any format, e.g. 07700 900123 or +44 7700 900123.
                   </p>
                 </div>
 

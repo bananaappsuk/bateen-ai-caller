@@ -11,12 +11,33 @@ const corsHeaders = {
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+const UK_E164 = /^\+44\d{9,10}$/;
+
+// UK-only normaliser — keep in sync with src/lib/phone.ts.
+function normalizeUkPhone(raw: string): string | null {
+  let p = raw.trim().replace(/[\s()\-.']/g, "");
+  if (!p) return null;
+  if (p.startsWith("00")) p = "+" + p.slice(2);
+  p = p.replace(/^\+440+/, "+44");
+  if (!p.startsWith("+")) {
+    const digits = p.replace(/\D/g, "");
+    if (!digits) return null;
+    p = digits.startsWith("44") ? `+${digits}` : `+44${digits.replace(/^0/, "")}`;
+  }
+  if (p.startsWith("+44")) return UK_E164.test(p) ? p : null;
+  return /^\+[1-9]\d{6,14}$/.test(p) ? p : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { phone, name } = await req.json();
-    if (!phone || !/^\+[1-9]\d{6,14}$/.test(phone)) {
-      return json({ error: "Enter a valid phone number in international format (e.g. +447700900123)." }, 400);
+    const { phone: rawPhone, name } = await req.json();
+    // This is a public endpoint, so it normalises the number itself rather than
+    // trusting the caller to have done it. Mirrors src/lib/phone.ts (edge
+    // functions can't import from src/): accept any way a UK number is written.
+    const phone = normalizeUkPhone(String(rawPhone ?? ""));
+    if (!phone) {
+      return json({ error: "Enter a valid UK phone number, e.g. 07700 900123." }, 400);
     }
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
       auth: { persistSession: false },
