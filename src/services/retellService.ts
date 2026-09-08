@@ -278,6 +278,8 @@ export async function listCalls(
 export interface RetellVoice {
   voice_id: string;
   voice_name?: string;
+  /** Retell marks stock voices "standard" and cloned voices "custom". */
+  voice_type?: string;
   provider?: string;
   gender?: string;
   accent?: string;

@@ -5,6 +5,15 @@ import { retellService, RetellApiError, type RetellVoice } from "@/services/rete
 import { createAgent, listAgents } from "@/services/agentsService";
 import { getBillingAccount } from "@/services/creditsService";
 import { buildAgentTools, buildDeliveryGuidance, buildToolGuidance } from "@/lib/agentTools";
+import { listAgentVoices } from "@/services/voicesService";
+import VoiceRecorder from "@/components/VoiceRecorder";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { limitsFor } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
@@ -25,7 +34,9 @@ import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -101,6 +112,11 @@ const CreateAgentPage = () => {
   const [form, setForm] = useState(defaultForm);
   const [voices, setVoices] = useState<RetellVoice[]>([]);
   const [loadingVoices, setLoadingVoices] = useState(true);
+  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
+  // Retell marks cloned voices as voice_type "custom"; the edge function has
+  // already stripped other tenants' clones, so anything custom here is ours.
+  const myVoices = voices.filter((v) => v.voice_type === "custom");
+  const stockVoices = voices.filter((v) => v.voice_type !== "custom");
   const [submitting, setSubmitting] = useState(false);
   const [maxAgents, setMaxAgents] = useState(Number.MAX_SAFE_INTEGER);
   const [agentCount, setAgentCount] = useState(0);
@@ -137,7 +153,7 @@ const CreateAgentPage = () => {
     let cancelled = false;
     (async () => {
       try {
-        const list = await retellService.listVoices();
+        const list = await listAgentVoices();
         if (cancelled) return;
         setVoices(list);
         if (list.length > 0) setForm((f) => ({ ...f, voiceId: list[0].voice_id }));
@@ -361,7 +377,16 @@ const CreateAgentPage = () => {
 
             {/* Voice (live from Retell) */}
             <div className="space-y-2">
-              <Label htmlFor="voice">Voice</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="voice">Voice</Label>
+                <button
+                  type="button"
+                  onClick={() => setVoiceDialogOpen(true)}
+                  className="text-sm font-medium text-[#00D4FF] hover:underline"
+                >
+                  + Use your own voice
+                </button>
+              </div>
               {loadingVoices ? (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading voices from Retell…
@@ -372,14 +397,27 @@ const CreateAgentPage = () => {
                     <SelectValue placeholder="Choose a voice" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
-                    {voices.map((v) => (
-                      <SelectItem key={v.voice_id} value={v.voice_id}>
-                        {v.voice_name ?? v.voice_id}
-                        {v.gender ? ` · ${v.gender}` : ""}
-                        {v.accent ? ` · ${v.accent}` : ""}
-                        {v.provider ? ` (${v.provider})` : ""}
-                      </SelectItem>
-                    ))}
+                    {myVoices.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>My voices</SelectLabel>
+                        {myVoices.map((v) => (
+                          <SelectItem key={v.voice_id} value={v.voice_id}>
+                            {v.voice_name ?? v.voice_id}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    <SelectGroup>
+                      {myVoices.length > 0 && <SelectLabel>Standard voices</SelectLabel>}
+                      {stockVoices.map((v) => (
+                        <SelectItem key={v.voice_id} value={v.voice_id}>
+                          {v.voice_name ?? v.voice_id}
+                          {v.gender ? ` · ${v.gender}` : ""}
+                          {v.accent ? ` · ${v.accent}` : ""}
+                          {v.provider ? ` (${v.provider})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               )}
@@ -561,6 +599,31 @@ const CreateAgentPage = () => {
           </div>
         </div>
       </main>
+
+      {/* Clone your own voice */}
+      <Dialog open={voiceDialogOpen} onOpenChange={setVoiceDialogOpen}>
+        <DialogContent className="sm:max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Use your own voice</DialogTitle>
+            <DialogDescription>
+              Record a sample and we'll create a voice your agents can speak with.
+            </DialogDescription>
+          </DialogHeader>
+          <VoiceRecorder
+            onCloned={(voice) => {
+              // Show it immediately and select it, rather than making the user
+              // reopen the picker to find it.
+              setVoices((prev) => [
+                { voice_id: voice.voice_id, voice_name: voice.voice_name, voice_type: "custom", provider: voice.provider },
+                ...prev,
+              ]);
+              setForm((f) => ({ ...f, voiceId: voice.voice_id }));
+              setVoiceDialogOpen(false);
+              toast.success(`Voice "${voice.voice_name}" is ready to use.`);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { retellService, RetellApiError, type RetellVoice } from "@/services/retellService";
+import { listAgentVoices } from "@/services/voicesService";
+import VoiceRecorder from "@/components/VoiceRecorder";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { getAgent as getLocalAgent, updateAgent as updateLocalAgent, type AgentRow } from "@/services/agentsService";
 import {
   buildAgentTools,
@@ -28,6 +37,8 @@ import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -86,6 +97,7 @@ const EditAgentPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [voices, setVoices] = useState<RetellVoice[]>([]);
+  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const [localAgent, setLocalAgent] = useState<AgentRow | null>(null);
   const [llmId, setLlmId] = useState<string | null>(null);
 
@@ -111,7 +123,7 @@ const EditAgentPage = () => {
       try {
         const [local, voiceList] = await Promise.all([
           getLocalAgent(id),
-          retellService.listVoices().catch(() => []),
+          listAgentVoices().catch(() => []),
         ]);
         if (!local) {
           toast.error("Agent not found.");
@@ -316,20 +328,48 @@ const EditAgentPage = () => {
               <div className="w-full px-6 sm:px-10 py-8 space-y-6">
                 {/* Voice */}
                 <div className="space-y-2">
-                  <Label htmlFor="voice">Voice</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="voice">Voice</Label>
+                    <button
+                      type="button"
+                      onClick={() => setVoiceDialogOpen(true)}
+                      className="text-sm font-medium text-[#00D4FF] hover:underline"
+                    >
+                      + Use your own voice
+                    </button>
+                  </div>
                   <Select value={form.voiceId} onValueChange={(v) => setForm({ ...form, voiceId: v })}>
                     <SelectTrigger id="voice">
                       <SelectValue placeholder="Choose a voice" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px]">
-                      {voices.map((v) => (
-                        <SelectItem key={v.voice_id} value={v.voice_id}>
-                          {v.voice_name ?? v.voice_id}
-                          {v.gender ? ` · ${v.gender}` : ""}
-                          {v.accent ? ` · ${v.accent}` : ""}
-                          {v.provider ? ` (${v.provider})` : ""}
-                        </SelectItem>
-                      ))}
+                      {voices.some((v) => v.voice_type === "custom") && (
+                        <SelectGroup>
+                          <SelectLabel>My voices</SelectLabel>
+                          {voices
+                            .filter((v) => v.voice_type === "custom")
+                            .map((v) => (
+                              <SelectItem key={v.voice_id} value={v.voice_id}>
+                                {v.voice_name ?? v.voice_id}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      )}
+                      <SelectGroup>
+                        {voices.some((v) => v.voice_type === "custom") && (
+                          <SelectLabel>Standard voices</SelectLabel>
+                        )}
+                        {voices
+                          .filter((v) => v.voice_type !== "custom")
+                          .map((v) => (
+                            <SelectItem key={v.voice_id} value={v.voice_id}>
+                              {v.voice_name ?? v.voice_id}
+                              {v.gender ? ` · ${v.gender}` : ""}
+                              {v.accent ? ` · ${v.accent}` : ""}
+                              {v.provider ? ` (${v.provider})` : ""}
+                            </SelectItem>
+                          ))}
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                 </div>
@@ -476,6 +516,28 @@ const EditAgentPage = () => {
           </>
         )}
       </main>
+
+      <Dialog open={voiceDialogOpen} onOpenChange={setVoiceDialogOpen}>
+        <DialogContent className="sm:max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Use your own voice</DialogTitle>
+            <DialogDescription>
+              Record a sample and we'll create a voice your agents can speak with.
+            </DialogDescription>
+          </DialogHeader>
+          <VoiceRecorder
+            onCloned={(voice) => {
+              setVoices((prev) => [
+                { voice_id: voice.voice_id, voice_name: voice.voice_name, voice_type: "custom", provider: voice.provider },
+                ...prev,
+              ]);
+              setForm((f) => ({ ...f, voiceId: voice.voice_id }));
+              setVoiceDialogOpen(false);
+              toast.success(`Voice "${voice.voice_name}" is ready to use.`);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
