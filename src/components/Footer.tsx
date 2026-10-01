@@ -59,7 +59,7 @@ const Footer = () => {
             <span className="font-display text-lg font-bold text-white">AI Tele Caller</span>
           </div>
           <p className="text-sm text-slate-400 max-w-md md:text-right">
-            AI-powered voice calling for businesses. Scale your outbound without scaling your headcount.
+            AI-powered voice calling for businesses. Make the calls and answer them, without scaling your headcount.
           </p>
         </div>
 

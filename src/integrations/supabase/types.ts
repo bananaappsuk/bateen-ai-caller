@@ -12,12 +12,68 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      agent_knowledge_bases: {
+        Row: {
+          agent_id: string
+          knowledge_base_id: string
+        }
+        Insert: {
+          agent_id: string
+          knowledge_base_id: string
+        }
+        Update: {
+          agent_id?: string
+          knowledge_base_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_knowledge_bases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_knowledge_bases_knowledge_base_id_fkey"
+            columns: ["knowledge_base_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_bases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           created_at: string
           deleted_in_retell: boolean
+          direction: string
           error_message: string | null
           id: string
           language: string
@@ -38,6 +94,7 @@ export type Database = {
         Insert: {
           created_at?: string
           deleted_in_retell?: boolean
+          direction?: string
           error_message?: string | null
           id?: string
           language?: string
@@ -58,6 +115,7 @@ export type Database = {
         Update: {
           created_at?: string
           deleted_in_retell?: boolean
+          direction?: string
           error_message?: string | null
           id?: string
           language?: string
@@ -463,6 +521,137 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_voices: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          preview_audio_url: string | null
+          provider: string
+          retell_voice_id: string
+          user_id: string
+          voice_name: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          preview_audio_url?: string | null
+          provider?: string
+          retell_voice_id: string
+          user_id: string
+          voice_name: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          preview_audio_url?: string | null
+          provider?: string
+          retell_voice_id?: string
+          user_id?: string
+          voice_name?: string
+        }
+        Relationships: []
+      }
+      demo_call_config: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          id: boolean
+          phone_number: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          agent_name?: string | null
+          id?: boolean
+          phone_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          agent_name?: string | null
+          id?: boolean
+          phone_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      inbound_numbers: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          id: string
+          label: string | null
+          phone_number: string
+          user_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          phone_number: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          phone_number?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_numbers_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_bases: {
+        Row: {
+          auto_refresh: boolean
+          created_at: string
+          id: string
+          name: string
+          retell_kb_id: string
+          source_count: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_refresh?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          retell_kb_id: string
+          source_count?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_refresh?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          retell_kb_id?: string
+          source_count?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           attempt_count: number
@@ -786,13 +975,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      phone_number_link_status: {
-        Args: { numbers: string[] }
+      adjust_credits: {
+        Args: { p_delta: number; p_user_id: string }
+        Returns: number
+      }
+      reserve_credits: {
+        Args: { p_amount?: number; p_user_id: string }
         Returns: {
-          phone_number: string
-          agent_id: string
-          agent_name: string
-          has_active_campaign: boolean
+          credits: number
+          ok: boolean
         }[]
       }
     }
@@ -813,12 +1004,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -842,11 +1033,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -867,11 +1058,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -892,11 +1083,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -909,11 +1100,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -923,6 +1114,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Bot, UploadCloud, Brain, LineChart, CreditCard, Globe } from "lucide-react";
+import { Bot, UploadCloud, Brain, LineChart, CreditCard, Globe, PhoneIncoming, BookOpen } from "lucide-react";
 
 const features = [
   {
@@ -11,6 +11,16 @@ const features = [
     icon: UploadCloud,
     title: "Campaign Management",
     desc: "Upload contact lists via CSV and launch bulk calling campaigns in minutes.",
+  },
+  {
+    icon: PhoneIncoming,
+    title: "Inbound Call Answering",
+    desc: "Point a number at an agent and it answers every call, captures the enquiry, and logs the transcript.",
+  },
+  {
+    icon: BookOpen,
+    title: "Knowledge Base",
+    desc: "Add your website, price list or FAQs so agents quote real details instead of improvising.",
   },
   {
     icon: Brain,
@@ -59,7 +69,7 @@ const FeaturesSection = () => {
             <span className="text-gradient">Powerful Features</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Everything you need to automate outbound calling at scale
+            Everything you need to run outbound campaigns and answer inbound calls at scale
           </p>
         </motion.div>
 

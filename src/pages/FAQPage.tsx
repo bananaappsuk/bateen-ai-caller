@@ -14,7 +14,7 @@ const faqs = [
     questions: [
       {
         q: "What is AI Tele Caller?",
-        a: "AI Tele Caller is AI phone calling software that makes outbound calls, sounds completely human, qualifies leads automatically, and syncs everything to your CRM. It works 24/7 without breaks.",
+        a: "AI Tele Caller is AI phone calling software that makes outbound calls and answers inbound ones, sounds completely human, qualifies leads automatically, and syncs everything to your CRM. It works 24/7 without breaks.",
       },
       {
         q: "How natural does it sound?",

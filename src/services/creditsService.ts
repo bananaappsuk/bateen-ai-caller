@@ -2,6 +2,7 @@
 // singleton billing account (user_id IS NULL); the auth phase switches to
 // per-user rows. Stripe checkout/portal are invoked via edge functions.
 import { supabase } from "@/integrations/supabase/client";
+import { throwFunctionError } from "@/lib/functionErrors";
 import type { Database } from "@/integrations/supabase/types";
 
 export type BillingAccount = Database["public"]["Tables"]["billing_accounts"]["Row"];
@@ -41,14 +42,14 @@ export async function listTransactions(limit = 50): Promise<CreditTransaction[]>
 // multiple browser tabs, or multiple campaigns for the same user — can never
 // collectively spend more than the account holds. `authorized: false` means
 // the balance can't cover another call right now.
+
 export async function reserveCallCredit(): Promise<{ authorized: boolean; credits: number }> {
   const { data, error } = await supabase.functions.invoke<{
     authorized?: boolean;
     credits?: number;
     error?: string;
   }>("reserve-call-credit", { body: {} });
-  if (error) throw new Error(error.message);
-  if (data?.error) throw new Error(data.error);
+  if (error || data?.error) await throwFunctionError(error, data, "Could not authorise this call.");
   return { authorized: data?.authorized ?? false, credits: data?.credits ?? 0 };
 }
 
@@ -57,7 +58,7 @@ export async function reserveCallCredit(): Promise<{ authorized: boolean; credit
 // the hold taken by reserveCallCredit().
 export async function releaseCallCredit(): Promise<void> {
   const { data, error } = await supabase.functions.invoke<{ error?: string }>("release-call-credit", { body: {} });
-  if (error) throw new Error(error.message);
+  if (error) await throwFunctionError(error, data);
   if (data?.error) throw new Error(data.error);
 }
 
@@ -74,7 +75,7 @@ export async function chargeForCall(
   const { data, error } = await supabase.functions.invoke<{ credits?: number; error?: string }>("charge-call", {
     body: { minutes, leadName: meta.leadName ?? null },
   });
-  if (error) throw new Error(error.message);
+  if (error) await throwFunctionError(error, data);
   if (data?.error) throw new Error(data.error);
 }
 
@@ -84,7 +85,7 @@ export async function redirectToStripe(
   body: Record<string, unknown>,
 ): Promise<void> {
   const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(fn, { body });
-  if (error) throw new Error(error.message);
+  if (error) await throwFunctionError(error, data);
   if (data?.error) throw new Error(data.error);
   if (!data?.url) throw new Error("No checkout URL returned.");
   window.location.href = data.url;
@@ -100,7 +101,7 @@ export async function changePlan(
     "change-subscription-plan",
     { body: { newPriceId, tier, monthlyCredits } },
   );
-  if (error) throw new Error(error.message);
+  if (error) await throwFunctionError(error, data);
   if (data?.error) throw new Error(data.error);
   return data?.message ?? "Plan changed.";
 }
@@ -119,7 +120,7 @@ export async function previewChange(newPriceId: string): Promise<{
     requiresCheckout?: boolean;
     error?: string;
   }>("preview-plan-change", { body: { newPriceId } });
-  if (error) throw new Error(error.message);
+  if (error) await throwFunctionError(error, data);
   if (data?.error) throw new Error(data.error);
   return data ?? {};
 }

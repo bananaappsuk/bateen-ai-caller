@@ -62,8 +62,95 @@ Deno.serve(async (req) => {
     payload: payload as unknown as Record<string, unknown>,
   });
 
-  // Locate the lead (metadata.leadId first, then by retell_call_id).
   const metadata = (call.metadata ?? {}) as Record<string, unknown>;
+
+  // ---- Inbound calls -------------------------------------------------------
+  // An inbound caller has no campaign and no pre-created lead, so unlike an
+  // outbound call there is nothing here to update: the call row and the enquiry
+  // both have to be created from the webhook itself. `metadata.userId` is
+  // stamped by the inbound-call function, which is what ties the call to a
+  // tenant on a shared Retell account.
+  const inboundUserId = metadata.direction === "inbound" ? (metadata.userId as string | undefined) : undefined;
+  if (inboundUserId && callId) {
+    const fromNumber = (call.from_number as string) ?? null;
+    const startTs = call.start_timestamp as number | undefined;
+    const endTs = call.end_timestamp as number | undefined;
+    const durationMs = startTs && endTs && endTs > startTs ? endTs - startTs : null;
+
+    // One row per call, created on call_started and filled in as it progresses.
+    const { data: existingCall } = await supabase
+      .from("calls")
+      .select("id")
+      .eq("retell_call_id", callId)
+      .maybeSingle();
+
+    const callRow = {
+      retell_call_id: callId,
+      user_id: inboundUserId,
+      direction: "inbound",
+      call_type: "phone_call",
+      from_number: fromNumber,
+      to_number: (call.to_number as string) ?? null,
+      agent_id: (call.agent_id as string) ?? null,
+      status: (call.call_status as string) ?? "registered",
+      transcript: (call.transcript as string) ?? null,
+      recording_url: (call.recording_url as string) ?? null,
+      summary: (analysis.call_summary as string) ?? null,
+      has_transcript: Boolean(call.transcript),
+      duration_ms: durationMs,
+    };
+    if (existingCall) {
+      await supabase.from("calls").update(callRow).eq("retell_call_id", callId);
+    } else {
+      await supabase.from("calls").insert(callRow);
+    }
+
+    // The enquiry: a lead with no campaign, matched on the caller's number so
+    // someone who rings twice doesn't become two records.
+    if (fromNumber) {
+      const { data: existingLead } = await supabase
+        .from("leads")
+        .select("id")
+        .eq("user_id", inboundUserId)
+        .eq("phone", fromNumber)
+        .is("campaign_id", null)
+        .maybeSingle();
+
+      const leadPatch: Record<string, unknown> = {
+        retell_call_id: callId,
+        called_at: new Date().toISOString(),
+        status: event === "call_started" ? "calling" : "completed",
+      };
+      if (call.transcript) leadPatch.transcript = call.transcript;
+      if (analysis.call_summary) leadPatch.summary = analysis.call_summary;
+      if (analysis.user_sentiment) leadPatch.sentiment = analysis.user_sentiment;
+
+      let inboundLeadId = existingLead?.id as string | undefined;
+      if (inboundLeadId) {
+        await supabase.from("leads").update(leadPatch).eq("id", inboundLeadId);
+      } else {
+        const { data: created } = await supabase
+          .from("leads")
+          .insert({ user_id: inboundUserId, phone: fromNumber, campaign_id: null, ...leadPatch })
+          .select("id")
+          .single();
+        inboundLeadId = created?.id as string | undefined;
+      }
+
+      // Classify once the conversation is over, reusing the outbound pipeline so
+      // an enquiry is labelled the same way a dialled lead is.
+      if (inboundLeadId && (event === "call_ended" || event === "call_analyzed") && call.transcript) {
+        void supabase.functions
+          .invoke("classify-lead", { body: { leadId: inboundLeadId } })
+          .catch(() => undefined);
+      }
+    }
+
+    return json({ ok: true, inbound: true });
+  }
+
+  // ---- Outbound calls ------------------------------------------------------
+  // Locate the lead (metadata.leadId first, then by retell_call_id).
   const leadId = metadata.leadId as string | undefined;
   let lead: Record<string, unknown> | null = null;
   if (leadId) {

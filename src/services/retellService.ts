@@ -13,6 +13,7 @@
  * not need to change when new endpoints are added.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { describeFunctionFailure } from "@/lib/functionErrors";
 
 // ---------- Types ----------
 
@@ -94,26 +95,16 @@ async function callRetell<T>(req: ProxyBody): Promise<T> {
   });
 
   if (error) {
-    // FunctionsHttpError from supabase-js does not automatically surface the
-    // JSON body — try to extract it for a useful message.
-    const anyErr = error as unknown as {
-      message?: string;
-      context?: { json?: () => Promise<{ error?: string; status?: number; details?: unknown }> };
-    };
-    let details: unknown;
-    let status: number | undefined;
-    let message = anyErr.message ?? "Retell request failed.";
-    try {
-      const parsed = await anyErr.context?.json?.();
-      if (parsed) {
-        message = parsed.error ?? message;
-        status = parsed.status;
-        details = parsed.details;
-      }
-    } catch {
-      // ignore parse failures
-    }
-    throw new RetellApiError(message, status, details);
+    // supabase-js hides the body on the error's context response, so the
+    // function's own wording has to be dug out; without it every failure reads
+    // "Edge Function returned a non-2xx status code".
+    const ctx = (error as unknown as { context?: Response }).context;
+    const parsed = ctx ? await ctx.clone().json().catch(() => null) : null;
+    const body = parsed as { error?: string; status?: number; details?: unknown } | null;
+    // The proxy echoes Retell's own status in the body; fall back to the HTTP one.
+    const status = body?.status ?? ctx?.status;
+    const { message } = await describeFunctionFailure(error, body, "Retell request failed.");
+    throw new RetellApiError(message, status, body?.details);
   }
 
   return data as T;

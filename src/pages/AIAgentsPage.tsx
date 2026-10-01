@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import DashboardLayout from "@/components/DashboardLayout";
+import { useCallMode } from "@/lib/callMode";
+import {  useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { RetellWebClient } from "retell-client-js-sdk";
-import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
+import { getDevUser } from "@/lib/devAuth";
 import { retellService, RetellApiError } from "@/services/retellService";
 import {
   listAgents,
@@ -11,14 +13,6 @@ import {
   type AgentRow,
 } from "@/services/agentsService";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -30,21 +24,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  LayoutDashboard,
   Bot,
-  PhoneOutgoing,
-  Users,
-  Settings as SettingsIcon,
-  GraduationCap,
-  LifeBuoy,
-  Lock,
   Mic,
   Plus,
   Trash2,
   PhoneCall,
   Loader2,
-  LogOut,
-  ChevronsUpDown,
   RefreshCw,
   PhoneOff,
   Pencil,
@@ -52,24 +37,18 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/ai-tele-caller-logo.png";
 import { useCredits } from "@/lib/creditsContext";
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
-  { icon: Bot, label: "AI Agents", href: "/ai-agents" },
-  { icon: PhoneOutgoing, label: "Campaigns", href: "/dashboard/campaigns" },
-  { icon: Users, label: "Leads", href: "/dashboard/leads" },
-  { icon: SettingsIcon, label: "Settings", href: "/dashboard/settings" },
-  { icon: GraduationCap, label: "Academy", href: "/dashboard/academy", locked: true },
-  { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
-];
 
 const AIAgentsPage = () => {
   const navigate = useNavigate();
   const user = getDevUser();
   const { credits } = useCredits();
   const [agents, setAgents] = useState<AgentRow[]>([]);
+  const { mode, isInbound } = useCallMode();
+  // Inbound and outbound agents are different things with different jobs, so
+  // each mode only ever shows its own.
+  const visibleAgents = agents.filter((a) => a.direction === mode);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -116,11 +95,6 @@ const AIAgentsPage = () => {
 
   if (!user) return null;
 
-  const visibleNav = navItems.filter((item) => canAccessRoute(user, item.href));
-  const handleSignOut = () => {
-    devSignOut();
-    navigate("/login", { replace: true });
-  };
 
   const handleSync = async () => {
     setSyncing(true);
@@ -209,76 +183,21 @@ const AIAgentsPage = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-[#F8F9FB]">
-      {/* Sidebar */}
-      <aside className="fixed top-0 left-0 h-full w-[260px] bg-white border-r border-slate-200 flex flex-col z-20">
-        <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-100">
-          <img src={logo} alt="AI Tele Caller" className="h-8 w-auto" />
-          <span className="font-semibold text-slate-900 tracking-tight">AI Tele Caller</span>
-        </div>
-        <nav className="flex-1 px-4 py-6 overflow-y-auto">
-          <ul className="space-y-1">
-            {visibleNav.map((item) => (
-              <li key={item.label}>
-                <NavLink
-                  to={item.href}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-cyan-50 text-cyan-600"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-                    )
-                  }
-                  end={item.href === "/dashboard"}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span className="flex-1">{item.label}</span>
-                  {item.locked && <Lock className="h-3.5 w-3.5 text-slate-400" />}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="p-4 border-t border-slate-100">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-200">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#FF6FD8] flex items-center justify-center text-white text-sm font-semibold shrink-0">
-                {user.initials}
-              </div>
-              <div className="min-w-0 flex-1 text-left">
-                <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
-                <p className="text-xs text-slate-500 truncate capitalize">{user.role}</p>
-              </div>
-              <ChevronsUpDown className="h-4 w-4 text-slate-400 shrink-0" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-[220px]">
-              <DropdownMenuLabel className="font-normal">
-                <p className="text-sm font-medium text-slate-900">{user.name}</p>
-                <p className="text-xs text-slate-500 capitalize">{user.role}</p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main className="flex-1 ml-[260px] min-h-screen">
+    <DashboardLayout>
         <div className="w-full px-6 py-8">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-slate-900">Voice Agents</h1>
                 <span className="px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-600 text-xs font-semibold">
-                  {agents.length}
+                  {visibleAgents.length}
                 </span>
               </div>
-              <p className="text-sm text-slate-500 mt-1">Create voice agents or sync existing ones from Retell.</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {isInbound
+                  ? "Agents that answer when someone rings one of your numbers."
+                  : "Agents that call your leads from campaigns."}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700">
@@ -314,7 +233,7 @@ const AIAgentsPage = () => {
             <div className="py-24 flex items-center justify-center text-slate-400">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          ) : agents.length === 0 ? (
+          ) : visibleAgents.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-soft py-24 flex flex-col items-center justify-center text-center px-6">
               <div className="h-16 w-16 rounded-full bg-gradient-to-br from-cyan-50 to-purple-50 flex items-center justify-center mb-4">
                 <Mic className="h-7 w-7 text-cyan-500" />
@@ -333,7 +252,7 @@ const AIAgentsPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {agents.map((agent) => (
+              {visibleAgents.map((agent) => (
                 <Card key={agent.id} className="bg-white rounded-2xl border-slate-100 shadow-soft hover:shadow-md transition-shadow">
                   <CardContent className="p-5">
                     <div className="flex items-start gap-3 mb-4">
@@ -384,7 +303,7 @@ const AIAgentsPage = () => {
             </div>
           )}
         </div>
-      </main>
+      
 
       {/* Active call indicator */}
       <Dialog open={!!activeCallId} onOpenChange={(o) => !o && stopActiveCall()}>
@@ -410,7 +329,7 @@ const AIAgentsPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardLayout>
   );
 };
 

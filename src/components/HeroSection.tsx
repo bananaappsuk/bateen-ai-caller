@@ -128,19 +128,19 @@ const HeroSection = () => {
           >
             <div className="inline-block mb-6 px-4 py-1.5 rounded-full border border-slate-200 bg-white/80 backdrop-blur-sm shadow-soft">
               <span className="text-sm font-medium text-slate-700">
-                🚀 AI-Powered Outbound Calling Platform
+                🚀 AI-Powered Inbound and Outbound Calling
               </span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-black leading-tight mb-6">
               <span className="text-brand-gradient">Automate Your</span>
               <br />
-              <span className="text-slate-900">Phone Outreach</span>
+              <span className="text-slate-900">Phone Calls</span>
             </h1>
 
             <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-600 mb-10 font-body leading-relaxed">
-              AI telecaller makes hundreds of simultaneous outbound calls with natural-sounding
-              AI voice agents. Qualify leads, books meetings, and scale your outreach automatically.
+              AI voice agents that call your leads and answer the ones who call you. Hundreds of
+              conversations at once, qualified, transcribed and logged automatically.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4">

@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import DashboardLayout from "@/components/DashboardLayout";
+import {  useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { retellService, RetellApiError, type RetellVoice } from "@/services/retellService";
 import { createAgent, listAgents } from "@/services/agentsService";
 import { getBillingAccount } from "@/services/creditsService";
 import { buildAgentTools, buildDeliveryGuidance, buildToolGuidance } from "@/lib/agentTools";
 import { listAgentVoices } from "@/services/voicesService";
+import { listKnowledgeBases, setAgentKnowledgeBases, type KnowledgeBase } from "@/services/knowledgeBaseService";
+import { useCallMode } from "@/lib/callMode";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import {
   Dialog,
@@ -16,15 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { limitsFor } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
-import { getDevUser, canAccessRoute, devSignOut } from "@/lib/devAuth";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { getDevUser } from "@/lib/devAuth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -41,16 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  LayoutDashboard,
   Bot,
-  PhoneOutgoing,
-  Users,
-  Settings as SettingsIcon,
-  GraduationCap,
-  LifeBuoy,
-  Lock,
-  LogOut,
-  ChevronsUpDown,
   ArrowLeft,
   PhoneOff,
   PhoneForwarded,
@@ -61,17 +47,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/ai-tele-caller-logo.png";
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
-  { icon: Bot, label: "AI Agents", href: "/ai-agents" },
-  { icon: PhoneOutgoing, label: "Campaigns", href: "/dashboard/campaigns" },
-  { icon: Users, label: "Leads", href: "/dashboard/leads" },
-  { icon: SettingsIcon, label: "Settings", href: "/dashboard/settings" },
-  { icon: GraduationCap, label: "Academy", href: "/dashboard/academy", locked: true },
-  { icon: LifeBuoy, label: "Support", href: "/dashboard/support" },
-];
 
 const PRESETS = [
   { id: "sales", label: "Sales Outreach", desc: "Qualify leads and book meetings" },
@@ -113,6 +89,9 @@ const CreateAgentPage = () => {
   const [voices, setVoices] = useState<RetellVoice[]>([]);
   const [loadingVoices, setLoadingVoices] = useState(true);
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
+  const { mode, isInbound } = useCallMode();
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [selectedKbs, setSelectedKbs] = useState<string[]>([]);
   // Retell marks cloned voices as voice_type "custom"; the edge function has
   // already stripped other tenants' clones, so anything custom here is ours.
   const myVoices = voices.filter((v) => v.voice_type === "custom");
@@ -154,6 +133,7 @@ const CreateAgentPage = () => {
     (async () => {
       try {
         const list = await listAgentVoices();
+        listKnowledgeBases().then(setKnowledgeBases).catch(() => setKnowledgeBases([]));
         if (cancelled) return;
         setVoices(list);
         if (list.length > 0) setForm((f) => ({ ...f, voiceId: list[0].voice_id }));
@@ -182,11 +162,6 @@ const CreateAgentPage = () => {
 
   if (!user) return null;
 
-  const visibleNav = navItems.filter((item) => canAccessRoute(user, item.href));
-  const handleSignOut = () => {
-    devSignOut();
-    navigate("/login", { replace: true });
-  };
   const handleCancel = () => navigate("/ai-agents");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -213,10 +188,16 @@ const CreateAgentPage = () => {
 
     try {
       // 1. Retell LLM (with tools + tool guidance appended to the script).
+      // The script tells the agent how to talk; the knowledge bases give it
+      // facts to look up mid-call. Both live on the same Retell LLM.
+      const kbIds = knowledgeBases
+        .filter((k) => selectedKbs.includes(k.id))
+        .map((k) => k.retell_kb_id);
       const llm = await retellService.createLlm({
         model: LLM_MODEL,
         general_prompt: prompt + buildDeliveryGuidance() + buildToolGuidance(toolConfig),
         ...(tools.length ? { general_tools: tools } : {}),
+        ...(kbIds.length ? { knowledge_base_ids: kbIds } : {}),
       });
 
       // 2. Retell agent (with our webhook + VocalMax-style behavior options).
@@ -238,7 +219,8 @@ const CreateAgentPage = () => {
       const agent = await retellService.createAgent(agentInput as never);
 
       // 3. Persist to DB.
-      await createAgent({
+      const savedAgent = await createAgent({
+        direction: mode,
         retell_agent_id: agent.agent_id,
         retell_agent_version: typeof agent.version === "number" ? agent.version : 0,
         retell_llm_id: llm.llm_id,
@@ -256,6 +238,9 @@ const CreateAgentPage = () => {
           transferToHuman: false,
         },
       });
+      if (selectedKbs.length) {
+        await setAgentKnowledgeBases(savedAgent.id, selectedKbs);
+      }
 
       toast.success("Agent created and synced with Retell.", { id: loadingId });
       navigate("/ai-agents");
@@ -272,66 +257,7 @@ const CreateAgentPage = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-[#F8F9FB]">
-      {/* Sidebar */}
-      <aside className="fixed top-0 left-0 h-full w-[260px] bg-white border-r border-slate-200 flex flex-col z-20">
-        <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-100">
-          <img src={logo} alt="AI Tele Caller" className="h-8 w-auto" />
-          <span className="font-semibold text-slate-900 tracking-tight">AI Tele Caller</span>
-        </div>
-        <nav className="flex-1 px-4 py-6 overflow-y-auto">
-          <ul className="space-y-1">
-            {visibleNav.map((item) => (
-              <li key={item.label}>
-                <NavLink
-                  to={item.href}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                      isActive || item.href === "/ai-agents"
-                        ? "bg-cyan-50 text-cyan-600"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-                    )
-                  }
-                  end={item.href === "/dashboard"}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span className="flex-1">{item.label}</span>
-                  {item.locked && <Lock className="h-3.5 w-3.5 text-slate-400" />}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="p-4 border-t border-slate-100">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-200">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#FF6FD8] flex items-center justify-center text-white text-sm font-semibold shrink-0">
-                {user.initials}
-              </div>
-              <div className="min-w-0 flex-1 text-left">
-                <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
-                <p className="text-xs text-slate-500 truncate capitalize">{user.role}</p>
-              </div>
-              <ChevronsUpDown className="h-4 w-4 text-slate-400 shrink-0" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-[220px]">
-              <DropdownMenuLabel className="font-normal">
-                <p className="text-sm font-medium text-slate-900">{user.name}</p>
-                <p className="text-xs text-slate-500 capitalize">{user.role}</p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main className="flex-1 ml-[260px] h-screen flex flex-col">
+    <DashboardLayout activeHref="/ai-agents" mainClassName="flex-1 ml-[260px] h-screen flex flex-col">
         <div className="shrink-0 bg-white border-b border-slate-100 px-6 sm:px-10 py-5">
           <div className="w-full flex items-center gap-4">
             <button
@@ -421,6 +347,50 @@ const CreateAgentPage = () => {
                   </SelectContent>
                 </Select>
               )}
+            </div>
+
+            {/* Knowledge bases — facts the agent can look up while talking */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Knowledge base</Label>
+                <a href="/dashboard/knowledge-base" className="text-sm font-medium text-[#00D4FF] hover:underline">
+                  Manage
+                </a>
+              </div>
+              {knowledgeBases.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No knowledge bases yet. The agent will rely on its script alone.{" "}
+                  <a href="/dashboard/knowledge-base" className="text-[#00D4FF] hover:underline">
+                    Create one
+                  </a>
+                  .
+                </p>
+              ) : (
+                <div className="space-y-2 rounded-xl border border-slate-200 p-3">
+                  {knowledgeBases.map((kb) => (
+                    <label key={kb.id} className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedKbs.includes(kb.id)}
+                        onChange={(e) =>
+                          setSelectedKbs((prev) =>
+                            e.target.checked ? [...prev, kb.id] : prev.filter((x) => x !== kb.id),
+                          )
+                        }
+                        className="h-4 w-4 rounded border-slate-300 accent-[#00D4FF]"
+                      />
+                      <span className="flex-1 text-sm text-slate-700">{kb.name}</span>
+                      <span className="text-xs text-slate-400">
+                        {kb.source_count} source{kb.source_count === 1 ? "" : "s"}
+                        {kb.status !== "complete" ? " · indexing" : ""}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-slate-400">
+                The agent looks these up before answering, so it quotes real details instead of guessing.
+              </p>
             </div>
 
             {/* Agent Name */}
@@ -598,7 +568,7 @@ const CreateAgentPage = () => {
             </Button>
           </div>
         </div>
-      </main>
+      
 
       {/* Clone your own voice */}
       <Dialog open={voiceDialogOpen} onOpenChange={setVoiceDialogOpen}>
@@ -624,7 +594,7 @@ const CreateAgentPage = () => {
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardLayout>
   );
 };
 

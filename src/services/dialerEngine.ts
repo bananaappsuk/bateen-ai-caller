@@ -210,9 +210,6 @@ async function dispatchCall(
       campaign_id: campaign.campaign_id,
       lead_name: lead.name,
     });
-    await updateCampaign(campaign.campaign_id, {
-      called_leads: (campaign.called_leads ?? 0) + 1,
-    });
     await supabase.from("consent_log").insert({
       lead_id: lead.id,
       campaign_id: campaign.campaign_id,
@@ -242,9 +239,6 @@ async function dispatchCall(
     }
     deps.log(`[FAIL] Call failed for ${lead.phone}: ${message}`, "error");
     await updateLead(lead.id, { status: "failed", ...retryPatch(lead, maxAttempts, retryDelay) });
-    await updateCampaign(campaign.campaign_id, {
-      failed_calls: (campaign.failed_calls ?? 0) + 1,
-    });
     return "ok";
   }
 }
@@ -263,6 +257,17 @@ async function runTick(campaignId: string, deps: DialerDeps): Promise<void> {
   const maxAttempts = campaign.max_attempts ?? 3;
   const retryDelay = campaign.retry_delay_minutes ?? 60;
   const leads = await listLeads(campaignId);
+
+  // Campaign counters are derived from the leads rather than incremented per
+  // dispatch. The old `campaign.called_leads + 1` read a value captured at the
+  // start of the tick, so every call in a batch wrote the same number and all
+  // but one increment was lost (a 18-lead run reported 3). Recomputing is
+  // idempotent, immune to that race, and repairs counts that already drifted.
+  const calledCount = leads.filter((l) => (l.attempt_count ?? 0) > 0).length;
+  const failedCount = leads.filter((l) => l.status === "failed").length;
+  if (calledCount !== (campaign.called_leads ?? 0) || failedCount !== (campaign.failed_calls ?? 0)) {
+    await updateCampaign(campaignId, { called_leads: calledCount, failed_calls: failedCount });
+  }
 
   // 1. Sync in-flight calls.
   let inFlight = 0;

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute, AdminRoute } from "@/lib/auth";
 import { CreditsProvider } from "@/lib/creditsContext";
+import { CallModeProvider } from "@/lib/callMode";
 import Index from "./pages/Index.tsx";
 import ContactPage from "./pages/ContactPage.tsx";
 import FAQPage from "./pages/FAQPage.tsx";
@@ -28,6 +29,11 @@ import ChoosePlanPage from "./pages/ChoosePlanPage.tsx";
 import AdminPage from "./pages/AdminPage.tsx";
 import TenantAdminPage from "./pages/TenantAdminPage.tsx";
 import TermsPage from "./pages/TermsPage.tsx";
+import KnowledgeBasePage from "./pages/KnowledgeBasePage.tsx";
+import InboundOverviewPage from "./pages/InboundOverviewPage.tsx";
+import InboundNumbersPage from "./pages/InboundNumbersPage.tsx";
+import InboundCallsPage from "./pages/InboundCallsPage.tsx";
+import InboundEnquiriesPage from "./pages/InboundEnquiriesPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -43,6 +49,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <CreditsProvider>
+            <CallModeProvider>
             <Routes>
               {/* Public */}
               <Route path="/" element={<Index />} />
@@ -78,6 +85,17 @@ const App = () => (
               <Route path="/leads/:id" element={P(<LeadDetailPage />)} />
               <Route path="/dashboard/leads" element={P(<LeadsPage />)} />
               <Route path="/dashboard/leads/:id" element={P(<LeadDetailPage />)} />
+              {/* Knowledge base — shared by inbound and outbound agents */}
+              <Route path="/dashboard/knowledge-base" element={P(<KnowledgeBasePage />)} />
+              <Route path="/knowledge-base" element={<Navigate to="/dashboard/knowledge-base" replace />} />
+
+              {/* Inbound */}
+              <Route path="/inbound" element={P(<InboundOverviewPage />)} />
+              <Route path="/inbound/agents" element={P(<AIAgentsPage />)} />
+              <Route path="/inbound/numbers" element={P(<InboundNumbersPage />)} />
+              <Route path="/inbound/calls" element={P(<InboundCallsPage />)} />
+              <Route path="/inbound/enquiries" element={P(<InboundEnquiriesPage />)} />
+
               <Route path="/settings" element={P(<SettingsPage />)} />
               <Route path="/dashboard/settings" element={P(<SettingsPage />)} />
               <Route path="/academy" element={P(<AcademyPage />)} />
@@ -97,6 +115,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </CallModeProvider>
           </CreditsProvider>
         </AuthProvider>
       </BrowserRouter>

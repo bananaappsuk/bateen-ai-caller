@@ -1,12 +1,13 @@
 // Admin API client (super-admin operations via the admin-api edge function,
 // which runs with the service role after verifying the caller is an admin).
 import { supabase } from "@/integrations/supabase/client";
+import { throwFunctionError } from "@/lib/functionErrors";
 
 async function call<T>(action: string, payload?: unknown): Promise<T> {
   const { data, error } = await supabase.functions.invoke<T & { error?: string }>("admin-api", {
     body: { action, payload },
   });
-  if (error) throw new Error(error.message);
+  if (error) await throwFunctionError(error, data);
   if ((data as { error?: string })?.error) throw new Error((data as { error?: string }).error);
   return data as T;
 }

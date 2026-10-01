@@ -5,6 +5,7 @@
 // raw list contains every tenant's clone. The function returns the stock voices
 // plus only this user's own.
 import { supabase } from "@/integrations/supabase/client";
+import { throwFunctionError } from "@/lib/functionErrors";
 import type { RetellVoice } from "@/services/retellService";
 
 export interface CustomVoiceRow {
@@ -23,12 +24,6 @@ export interface ClonedVoice {
   preview_audio_url: string | null;
 }
 
-function messageFrom(error: unknown, data: unknown, fallback: string): string {
-  const fromData = (data as { error?: string } | null)?.error;
-  if (fromData) return fromData;
-  if (error instanceof Error && error.message) return error.message;
-  return fallback;
-}
 
 /** Stock Retell voices plus this user's own clones. */
 export async function listAgentVoices(): Promise<RetellVoice[]> {
@@ -36,8 +31,8 @@ export async function listAgentVoices(): Promise<RetellVoice[]> {
     "list-agent-voices",
     { body: {} },
   );
-  if (error) throw new Error(messageFrom(error, data, "Could not load voices."));
-  if (!Array.isArray(data)) throw new Error(messageFrom(null, data, "Could not load voices."));
+  if (error) await throwFunctionError(error, data, "Could not load voices.");
+  if (!Array.isArray(data)) await throwFunctionError(null, data, "Could not load voices.");
   return data;
 }
 
@@ -50,7 +45,7 @@ export async function cloneVoice(file: File, voiceName: string): Promise<ClonedV
     "clone-voice",
     { body: form },
   );
-  if (error || !data?.voice_id) throw new Error(messageFrom(error, data, "Voice cloning failed."));
+  if (error || !data?.voice_id) await throwFunctionError(error, data, "Voice cloning failed.");
   return data;
 }
 

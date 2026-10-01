@@ -20,7 +20,7 @@ const ThreeThingsSection = () => {
             Three things that <span className="text-brand-gradient">change everything</span>
           </h2>
           <p className="mt-4 text-slate-600 text-lg">
-            The full outbound stack, handled by AI.
+            Calls out, calls in, handled end to end by AI.
           </p>
         </div>
 
