@@ -87,3 +87,43 @@ export async function throwFunctionError(error: unknown, data: unknown, fallback
   const { message } = await describeFunctionFailure(error, data, fallback);
   throw new Error(message);
 }
+
+/** Postgres error codes whose raw wording means nothing to a user. */
+const DB_CODES: Record<string, string> = {
+  // RLS rejected the write. Always our bug — a missing or wrong policy — so say
+  // something true without blaming the user for it.
+  "42501": "You do not have permission to make that change. Please contact support.",
+  "23505": "That already exists.",
+  "23503": "That refers to something that no longer exists. Refresh the page.",
+  "23502": "Something required was missing. Check the form and try again.",
+  "22P02": "One of the values was not in a format we understand.",
+  PGRST301: "Your session has expired. Refresh the page and sign in again to continue.",
+};
+
+/**
+ * Turns whatever a failed query threw into a real `Error`.
+ *
+ * supabase-js rejects table operations with a plain `{ message, code, details,
+ * hint }` object, which is not an `Error`. Callers almost all narrow with
+ * `err instanceof Error`, so a raw rejection fell through to their generic
+ * fallback and the real cause never reached the screen — a missing RLS policy
+ * on `inbound_numbers` showed up only as "Could not add the number."
+ */
+export function asError(error: unknown, fallback = "Something went wrong. Try again."): Error {
+  if (error instanceof Error) return error;
+
+  if (error && typeof error === "object") {
+    const e = error as { message?: unknown; code?: unknown; details?: unknown };
+    const code = typeof e.code === "string" ? e.code : undefined;
+    const raw = typeof e.message === "string" ? e.message : undefined;
+
+    // A known code outranks the raw wording: "new row violates row-level
+    // security policy for table ..." is accurate and useless.
+    const known = code ? DB_CODES[code] : undefined;
+    const err = new Error(known ?? raw ?? fallback);
+    if (code) (err as Error & { code?: string }).code = code;
+    return err;
+  }
+
+  return new Error(typeof error === "string" && error.trim() ? error : fallback);
+}

@@ -6,7 +6,7 @@
 // Retell directly: all tenants share one Retell account, so the raw list would
 // expose everyone's knowledge bases.
 import { supabase } from "@/integrations/supabase/client";
-import { throwFunctionError } from "@/lib/functionErrors";
+import { throwFunctionError, asError } from "@/lib/functionErrors";
 
 export type KnowledgeBaseStatus = "in_progress" | "complete" | "error" | "refreshing_in_progress";
 
@@ -103,7 +103,7 @@ export async function getAgentKnowledgeBaseIds(agentId: string): Promise<string[
     .from("agent_knowledge_bases")
     .select("knowledge_bases(retell_kb_id)")
     .eq("agent_id", agentId);
-  if (error) throw error;
+  if (error) throw asError(error);
   return (data ?? [])
     .map((r) => (r.knowledge_bases as { retell_kb_id?: string } | null)?.retell_kb_id)
     .filter((v): v is string => Boolean(v));
@@ -117,5 +117,5 @@ export async function setAgentKnowledgeBases(agentId: string, kbRowIds: string[]
   const { error } = await supabase
     .from("agent_knowledge_bases")
     .insert(kbRowIds.map((knowledge_base_id) => ({ agent_id: agentId, knowledge_base_id })));
-  if (error) throw error;
+  if (error) throw asError(error);
 }

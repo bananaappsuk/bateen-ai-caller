@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { describeFunctionFailure, throwFunctionError } from "./functionErrors";
+import { describeFunctionFailure, throwFunctionError, asError } from "./functionErrors";
 
 // supabase-js reports every failure as "Edge Function returned a non-2xx status
 // code" with the real body hidden on error.context. A dev once watched a
@@ -107,5 +107,57 @@ describe("throwFunctionError", () => {
   });
   it("throws the server's message when it has one", async () => {
     await expect(throwFunctionError(null, { error: "No credits left." })).rejects.toThrow("No credits left.");
+  });
+});
+
+describe("asError — a failed query must not lose its reason", () => {
+  // The bug this exists for: supabase-js rejects table operations with a plain
+  // object, callers narrow with `instanceof Error`, and the real cause was
+  // replaced by each caller's generic fallback.
+  const rls = { message: 'new row violates row-level security policy for table "inbound_numbers"', code: "42501", details: null, hint: null };
+
+  it("returns a real Error, so `instanceof Error` narrowing works", () => {
+    expect(asError(rls)).toBeInstanceOf(Error);
+  });
+
+  it("an RLS rejection says something a user can act on", () => {
+    expect(asError(rls).message).toBe("You do not have permission to make that change. Please contact support.");
+  });
+
+  it("never leaks the raw postgres wording", () => {
+    const m = asError(rls).message;
+    expect(m).not.toMatch(/row-level security/i);
+    expect(m).not.toMatch(/violates/i);
+  });
+
+  it("keeps the code so a caller can word a case better itself", () => {
+    const err = asError({ message: "duplicate key value violates unique constraint", code: "23505" });
+    expect((err as Error & { code?: string }).code).toBe("23505");
+  });
+
+  it.each([
+    ["23505", "That already exists."],
+    ["23503", "That refers to something that no longer exists. Refresh the page."],
+    ["23502", "Something required was missing. Check the form and try again."],
+    ["PGRST301", "Your session has expired. Refresh the page and sign in again to continue."],
+  ])("maps %s to a plain-English message", (code, expected) => {
+    expect(asError({ message: "whatever postgres said", code }).message).toBe(expected);
+  });
+
+  it("falls back to the error's own message for a code it does not know", () => {
+    expect(asError({ message: "connection terminated", code: "08006" }).message).toBe("connection terminated");
+  });
+
+  it("passes a real Error straight through", () => {
+    const e = new Error("already fine");
+    expect(asError(e)).toBe(e);
+  });
+
+  it.each([[null], [undefined], [{}], [42]])("still produces a message for %s", (input) => {
+    expect(asError(input).message).toBe("Something went wrong. Try again.");
+  });
+
+  it("uses a string rejection as the message", () => {
+    expect(asError("plain string failure").message).toBe("plain string failure");
   });
 });

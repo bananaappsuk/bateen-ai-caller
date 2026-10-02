@@ -3,6 +3,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { ParsedLead } from "./leadsCsv";
+import { asError } from "@/lib/functionErrors";
 
 export type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
 export type LeadInsert = Database["public"]["Tables"]["leads"]["Insert"];
@@ -35,7 +36,7 @@ export async function insertLeads(campaignId: string, leads: ParsedLead[]): Prom
     status: "pending",
   }));
   const { data, error } = await supabase.from("leads").insert(rows).select("id");
-  if (error) throw error;
+  if (error) throw asError(error);
   return data?.length ?? 0;
 }
 
@@ -43,22 +44,22 @@ export async function listLeads(campaignId?: string): Promise<LeadRow[]> {
   let q = supabase.from("leads").select("*").order("created_at", { ascending: false });
   if (campaignId) q = q.eq("campaign_id", campaignId);
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) throw asError(error);
   return data ?? [];
 }
 
 export async function getLead(id: string): Promise<LeadRow | null> {
   const { data, error } = await supabase.from("leads").select("*").eq("id", id).maybeSingle();
-  if (error) throw error;
+  if (error) throw asError(error);
   return data;
 }
 
 export async function updateLead(id: string, patch: Partial<LeadInsert>): Promise<void> {
   const { error } = await supabase.from("leads").update(patch).eq("id", id);
-  if (error) throw error;
+  if (error) throw asError(error);
 }
 
 export async function deleteLeadsForCampaign(campaignId: string): Promise<void> {
   const { error } = await supabase.from("leads").delete().eq("campaign_id", campaignId);
-  if (error) throw error;
+  if (error) throw asError(error);
 }

@@ -5,7 +5,7 @@
 // raw list contains every tenant's clone. The function returns the stock voices
 // plus only this user's own.
 import { supabase } from "@/integrations/supabase/client";
-import { throwFunctionError } from "@/lib/functionErrors";
+import { throwFunctionError, asError } from "@/lib/functionErrors";
 import type { RetellVoice } from "@/services/retellService";
 
 export interface CustomVoiceRow {
@@ -55,7 +55,7 @@ export async function listMyVoices(): Promise<CustomVoiceRow[]> {
     .from("custom_voices")
     .select("id, retell_voice_id, voice_name, provider, preview_audio_url, created_at")
     .order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) throw asError(error);
   return (data ?? []) as CustomVoiceRow[];
 }
 
@@ -65,5 +65,5 @@ export async function listMyVoices(): Promise<CustomVoiceRow[]> {
  */
 export async function removeMyVoice(id: string): Promise<void> {
   const { error } = await supabase.from("custom_voices").delete().eq("id", id);
-  if (error) throw error;
+  if (error) throw asError(error);
 }

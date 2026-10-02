@@ -2,27 +2,25 @@
 // singleton billing account (user_id IS NULL); the auth phase switches to
 // per-user rows. Stripe checkout/portal are invoked via edge functions.
 import { supabase } from "@/integrations/supabase/client";
-import { throwFunctionError } from "@/lib/functionErrors";
+import { throwFunctionError, asError } from "@/lib/functionErrors";
 import type { Database } from "@/integrations/supabase/types";
 
 export type BillingAccount = Database["public"]["Tables"]["billing_accounts"]["Row"];
 export type CreditTransaction = Database["public"]["Tables"]["credit_transactions"]["Row"];
 
-// RLS returns only the current user's account; create it on first use.
+// RLS returns only the current user's account, and only for reading.
+//
+// This used to fall back to creating the row from the browser, which could
+// never work: `billing_accounts` has no INSERT policy, by design. Granting one
+// would let a client POST its own `credits` and `plan_tier` and so hand itself
+// an unlimited balance, so creation stays on the server — `ensureUserAccount`
+// in the reserve-call-credit function makes the row with the service role
+// before the first call is reserved. Until then there is simply no row, and
+// null means a zero balance, which is what a brand-new account has.
 export async function getBillingAccount(): Promise<BillingAccount | null> {
   const { data, error } = await supabase.from("billing_accounts").select("*").limit(1).maybeSingle();
-  if (error) throw error;
-  if (data) return data;
-  const { data: created, error: insErr } = await supabase
-    .from("billing_accounts")
-    .insert({ credits: 0 })
-    .select()
-    .single();
-  if (insErr) {
-    const { data: retry } = await supabase.from("billing_accounts").select("*").limit(1).maybeSingle();
-    return retry ?? null;
-  }
-  return created;
+  if (error) throw asError(error);
+  return data ?? null;
 }
 
 export async function listTransactions(limit = 50): Promise<CreditTransaction[]> {
@@ -31,7 +29,7 @@ export async function listTransactions(limit = 50): Promise<CreditTransaction[]>
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error) throw error;
+  if (error) throw asError(error);
   return data ?? [];
 }
 

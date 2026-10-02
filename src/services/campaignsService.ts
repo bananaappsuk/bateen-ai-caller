@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { getAgent } from "./agentsService";
 import { getBillingAccount } from "./creditsService";
+import { asError } from "@/lib/functionErrors";
 
 export type CampaignRow = Database["public"]["Tables"]["campaigns"]["Row"];
 export type CampaignInsert = Database["public"]["Tables"]["campaigns"]["Insert"];
@@ -16,7 +17,7 @@ export async function listCampaigns(): Promise<CampaignRow[]> {
     .from("campaigns")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) throw asError(error);
   return data ?? [];
 }
 
@@ -26,24 +27,24 @@ export async function getCampaign(id: string): Promise<CampaignRow | null> {
     .select("*")
     .eq("campaign_id", id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw asError(error);
   return data;
 }
 
 export async function createCampaign(input: CampaignInsert): Promise<CampaignRow> {
   const { data, error } = await supabase.from("campaigns").insert(input).select().single();
-  if (error) throw error;
+  if (error) throw asError(error);
   return data;
 }
 
 export async function updateCampaign(id: string, patch: Partial<CampaignInsert>): Promise<void> {
   const { error } = await supabase.from("campaigns").update(patch).eq("campaign_id", id);
-  if (error) throw error;
+  if (error) throw asError(error);
 }
 
 export async function deleteCampaign(id: string): Promise<void> {
   const { error } = await supabase.from("campaigns").delete().eq("campaign_id", id);
-  if (error) throw error;
+  if (error) throw asError(error);
 }
 
 export interface CampaignStartCheck {
@@ -70,9 +71,12 @@ export async function canStartCampaign(campaign: CampaignRow): Promise<CampaignS
   if (!agent) return { ok: false, reason: "Agent not found — it may not belong to your account." };
   if (!agent.retell_agent_id) return { ok: false, reason: "This agent isn't synced with Retell yet." };
 
+  // No row yet means an untouched account, which is a zero balance rather than
+  // a missing one — the server creates the row when the first call is reserved.
+  // Saying "no billing account found" sent people to support over what is just
+  // an empty wallet.
   const billing = await getBillingAccount();
-  if (!billing) return { ok: false, reason: "No billing account found for your account." };
-  if ((billing.credits ?? 0) <= 0) {
+  if ((billing?.credits ?? 0) <= 0) {
     return { ok: false, reason: "You have no calling credits remaining. Add credits to start this campaign." };
   }
 

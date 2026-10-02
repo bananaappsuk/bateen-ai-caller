@@ -3,12 +3,13 @@
 // classify-lead edge functions to pick the alert recipient.
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { asError } from "@/lib/functionErrors";
 
 export type NotificationSettings = Database["public"]["Tables"]["notification_settings"]["Row"];
 
 export async function getNotificationSettings(): Promise<NotificationSettings | null> {
   const { data, error } = await supabase.from("notification_settings").select("*").maybeSingle();
-  if (error) throw error;
+  if (error) throw asError(error);
   return data;
 }
 
@@ -24,9 +25,9 @@ export async function saveNotificationSettings(patch: {
       .from("notification_settings")
       .update(patch)
       .eq("id", existing.id);
-    if (error) throw error;
+    if (error) throw asError(error);
     return;
   }
   const { error } = await supabase.from("notification_settings").insert(patch);
-  if (error) throw error;
+  if (error) throw asError(error);
 }

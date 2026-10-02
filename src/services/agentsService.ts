@@ -4,6 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { retellService } from "./retellService";
+import { asError } from "@/lib/functionErrors";
 
 export type AgentRow = Database["public"]["Tables"]["agents"]["Row"];
 export type AgentInsert = Database["public"]["Tables"]["agents"]["Insert"];
@@ -13,30 +14,30 @@ export async function listAgents(): Promise<AgentRow[]> {
     .from("agents")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) throw asError(error);
   return data ?? [];
 }
 
 export async function getAgent(id: string): Promise<AgentRow | null> {
   const { data, error } = await supabase.from("agents").select("*").eq("id", id).maybeSingle();
-  if (error) throw error;
+  if (error) throw asError(error);
   return data;
 }
 
 export async function createAgent(input: AgentInsert): Promise<AgentRow> {
   const { data, error } = await supabase.from("agents").insert(input).select().single();
-  if (error) throw error;
+  if (error) throw asError(error);
   return data;
 }
 
 export async function updateAgent(id: string, patch: Partial<AgentInsert>): Promise<void> {
   const { error } = await supabase.from("agents").update(patch).eq("id", id);
-  if (error) throw error;
+  if (error) throw asError(error);
 }
 
 export async function deleteAgent(id: string): Promise<void> {
   const { error } = await supabase.from("agents").delete().eq("id", id);
-  if (error) throw error;
+  if (error) throw asError(error);
 }
 
 // Refresh the user's already-owned agents from Retell (name/voice/version).

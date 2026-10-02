@@ -75,8 +75,11 @@ const InboundNumbersPage = () => {
       setLabel("");
       load();
     } catch (err) {
+      // 23505 is the unique index on phone_number; this page can word it better
+      // than the generic "That already exists.".
+      const code = (err as { code?: string })?.code;
       const msg = err instanceof Error ? err.message : "Could not add the number.";
-      toast.error(/duplicate|unique/i.test(msg) ? "That number is already set up." : msg);
+      toast.error(code === "23505" ? "That number is already set up." : msg);
     } finally {
       setSaving(false);
     }

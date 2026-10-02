@@ -5,6 +5,7 @@
 // enquiry is a lead with no campaign. Inbound calls are `calls` rows with
 // direction "inbound", written by the retell-webhook when a call arrives.
 import { supabase } from "@/integrations/supabase/client";
+import { asError } from "@/lib/functionErrors";
 
 export interface InboundNumber {
   id: string;
@@ -54,7 +55,7 @@ export async function listInboundNumbers(): Promise<InboundNumber[]> {
     .from("inbound_numbers")
     .select("id, phone_number, agent_id, label, created_at, agent:agents(id, name)")
     .order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) throw asError(error);
   return (data ?? []) as unknown as InboundNumber[];
 }
 
@@ -67,18 +68,36 @@ export async function addInboundNumber(phone: string, label?: string): Promise<I
     .insert({ phone_number: phone, label: label || null, user_id: userId })
     .select("id, phone_number, agent_id, label, created_at")
     .single();
-  if (error) throw error;
+  if (error) throw asError(error);
   return data as unknown as InboundNumber;
 }
 
+// Both of these ask for the affected rows back, and treat "none" as a failure.
+//
+// An UPDATE or DELETE that matches no row is not an error to Postgres: it
+// reports success having changed nothing. When this table was missing its
+// DELETE policy, RLS filtered the row out, zero rows were deleted, and the API
+// still answered 204 — so the page removed the number from the list and said
+// "Number removed." while it sat in the database, still answering calls.
+// Reading the rows back is what turns that silence into an error.
 export async function assignAgentToNumber(numberId: string, agentId: string | null): Promise<void> {
-  const { error } = await supabase.from("inbound_numbers").update({ agent_id: agentId }).eq("id", numberId);
-  if (error) throw error;
+  const { data, error } = await supabase
+    .from("inbound_numbers")
+    .update({ agent_id: agentId })
+    .eq("id", numberId)
+    .select("id");
+  if (error) throw asError(error);
+  if (!data || data.length === 0) throw new Error("That number no longer exists. Refresh the page.");
 }
 
 export async function removeInboundNumber(numberId: string): Promise<void> {
-  const { error } = await supabase.from("inbound_numbers").delete().eq("id", numberId);
-  if (error) throw error;
+  const { data, error } = await supabase
+    .from("inbound_numbers")
+    .delete()
+    .eq("id", numberId)
+    .select("id");
+  if (error) throw asError(error);
+  if (!data || data.length === 0) throw new Error("That number could not be removed. Refresh the page and try again.");
 }
 
 export async function listInboundCalls(limit = 200): Promise<InboundCall[]> {
@@ -90,7 +109,7 @@ export async function listInboundCalls(limit = 200): Promise<InboundCall[]> {
     .eq("direction", "inbound")
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error) throw error;
+  if (error) throw asError(error);
   return (data ?? []) as unknown as InboundCall[];
 }
 
@@ -102,7 +121,7 @@ export async function listEnquiries(limit = 200): Promise<Enquiry[]> {
     .is("campaign_id", null)
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error) throw error;
+  if (error) throw asError(error);
   return (data ?? []) as unknown as Enquiry[];
 }
 
