@@ -25,7 +25,9 @@ import {
   buildToolGuidance,
   parseAgentTools,
   stripAppendedGuidance,
+  LIVE_TOOLS,
 } from "@/lib/agentTools";
+import { PLAYBOOKS, composePrompt, decomposePrompt, detectPlaybook } from "@/lib/voicePlaybooks";
 import { getDevUser } from "@/lib/devAuth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,6 +84,8 @@ const EditAgentPage = () => {
   const [selectedKbs, setSelectedKbs] = useState<string[]>([]);
   const [localAgent, setLocalAgent] = useState<AgentRow | null>(null);
   const [llmId, setLlmId] = useState<string | null>(null);
+  const [playbook, setPlaybook] = useState<string>("none");
+  const [liveTools, setLiveTools] = useState<string[]>([]);
 
   const [form, setForm] = useState({
     internalName: "",
@@ -137,13 +141,18 @@ const EditAgentPage = () => {
 
         const remoteLlm = remoteLlmId ? await retellService.getLlm(remoteLlmId) : null;
         const toolState = parseAgentTools(remoteLlm?.general_tools as unknown[] | undefined);
+        // The stored prompt is the user's words plus the generated parts; show
+        // only their words back, and remember what it was generated from.
+        const storedPrompt = remoteLlm?.general_prompt ?? local.prompt ?? "";
+        setPlaybook(detectPlaybook(storedPrompt));
+        setLiveTools(toolState.live);
         const ambientSound = (remoteAgent.ambient_sound as string | undefined) ?? "";
         const voicemail = remoteAgent.voicemail_option as { action?: { type?: string } } | undefined;
 
         setForm({
           internalName: (remoteAgent.agent_name as string | undefined) ?? local.name,
           voiceId: (remoteAgent.voice_id as string | undefined) ?? local.retell_voice_id ?? "",
-          prompt: stripAppendedGuidance(remoteLlm?.general_prompt ?? local.prompt ?? ""),
+          prompt: decomposePrompt(stripAppendedGuidance(storedPrompt)),
           ambience: AMBIENT_REVERSE_MAP[ambientSound] ?? "none",
           responseSpeed: Math.round(((remoteAgent.responsiveness as number | undefined) ?? 0.5) * 10) || 5,
           hangUpOnVoicemail: voicemail?.action?.type === "hangup",
@@ -180,6 +189,8 @@ const EditAgentPage = () => {
     const toolConfig = {
       endCall: { enabled: form.endCallAutomatically },
       transfer: { enabled: form.transferToHuman, phoneNumber: form.transferNumber.trim() },
+      live: liveTools,
+      retellAgentId: localAgent.retell_agent_id,
     };
     const tools = buildAgentTools(toolConfig);
 
@@ -188,7 +199,7 @@ const EditAgentPage = () => {
         .filter((k) => selectedKbs.includes(k.id))
         .map((k) => k.retell_kb_id);
       await retellService.updateLlm(llmId, {
-        general_prompt: prompt + buildDeliveryGuidance() + buildToolGuidance(toolConfig),
+        general_prompt: composePrompt(prompt, playbook) + buildDeliveryGuidance() + buildToolGuidance(toolConfig),
         general_tools: tools,
         // Always sent, so clearing every box actually detaches them upstream
         // rather than silently leaving the old ones attached.
@@ -306,6 +317,48 @@ const EditAgentPage = () => {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Playbook and live tools — same two controls as creation */}
+                <div className="space-y-2">
+                  <Label htmlFor="playbook">How it should handle the call</Label>
+                  <Select value={playbook} onValueChange={setPlaybook}>
+                    <SelectTrigger id="playbook" className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PLAYBOOKS.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-400">
+                    {PLAYBOOKS.find((p) => p.id === playbook)?.summary}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>What it can do during the call</Label>
+                  <div className="space-y-2 rounded-xl border border-slate-200 p-3">
+                    {LIVE_TOOLS.map((tool) => (
+                      <label key={tool.id} className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={liveTools.includes(tool.id)}
+                          onChange={(e) =>
+                            setLiveTools((prev) =>
+                              e.target.checked ? [...prev, tool.id] : prev.filter((x) => x !== tool.id),
+                            )
+                          }
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-[#00D4FF]"
+                        />
+                        <span className="flex-1">
+                          <span className="block text-sm text-slate-700">{tool.label}</span>
+                          <span className="block text-xs text-slate-400">{tool.summary}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Knowledge bases — shared across inbound and outbound agents */}

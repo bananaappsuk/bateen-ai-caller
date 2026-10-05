@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { retellService, RetellApiError, type RetellVoice } from "@/services/retellService";
 import { createAgent, listAgents } from "@/services/agentsService";
 import { getBillingAccount } from "@/services/creditsService";
-import { buildAgentTools, buildDeliveryGuidance, buildToolGuidance } from "@/lib/agentTools";
+import { buildAgentTools, buildDeliveryGuidance, buildToolGuidance, LIVE_TOOLS } from "@/lib/agentTools";
+import { PLAYBOOKS, DEFAULT_PLAYBOOK, composePrompt } from "@/lib/voicePlaybooks";
 import { listAgentVoices } from "@/services/voicesService";
 import { listKnowledgeBases, setAgentKnowledgeBases, type KnowledgeBase } from "@/services/knowledgeBaseService";
 import { useCallMode } from "@/lib/callMode";
@@ -91,6 +92,10 @@ const CreateAgentPage = () => {
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const { mode, isInbound } = useCallMode();
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [playbook, setPlaybook] = useState<string>(DEFAULT_PLAYBOOK);
+  // Recognising a returning caller costs nothing and makes the first ten
+  // seconds of every repeat call better, so it is on unless turned off.
+  const [liveTools, setLiveTools] = useState<string[]>(["look_up_caller", "take_message"]);
   const [selectedKbs, setSelectedKbs] = useState<string[]>([]);
   // Retell marks cloned voices as voice_type "custom"; the edge function has
   // already stripped other tenants' clones, so anything custom here is ours.
@@ -183,7 +188,10 @@ const CreateAgentPage = () => {
     const toolConfig = {
       endCall: { enabled: form.endCallAutomatically },
       transfer: { enabled: false, phoneNumber: "" },
+      live: liveTools,
     };
+    // Built twice: the agent id only exists after step 2, and the tool URL
+    // needs it so our endpoint can tell whose tenant is calling.
     const tools = buildAgentTools(toolConfig);
 
     try {
@@ -195,7 +203,7 @@ const CreateAgentPage = () => {
         .map((k) => k.retell_kb_id);
       const llm = await retellService.createLlm({
         model: LLM_MODEL,
-        general_prompt: prompt + buildDeliveryGuidance() + buildToolGuidance(toolConfig),
+        general_prompt: composePrompt(prompt, playbook) + buildDeliveryGuidance() + buildToolGuidance(toolConfig),
         ...(tools.length ? { general_tools: tools } : {}),
         ...(kbIds.length ? { knowledge_base_ids: kbIds } : {}),
       });
@@ -218,6 +226,15 @@ const CreateAgentPage = () => {
       }
       const agent = await retellService.createAgent(agentInput as never);
 
+      // 2b. Now that the agent has an id, point its live tools at us with that
+      // id attached. Without this the tool fires but we cannot resolve the
+      // tenant until the call_started webhook has landed, which is a race.
+      if (liveTools.length) {
+        await retellService.updateLlm(llm.llm_id, {
+          general_tools: buildAgentTools({ ...toolConfig, retellAgentId: agent.agent_id }),
+        } as never);
+      }
+
       // 3. Persist to DB.
       const savedAgent = await createAgent({
         direction: mode,
@@ -236,6 +253,8 @@ const CreateAgentPage = () => {
           responseSpeed: form.responseSpeed,
           endCallAutomatically: form.endCallAutomatically,
           transferToHuman: false,
+          playbook,
+          liveTools,
         },
       });
       if (selectedKbs.length) {
@@ -347,6 +366,54 @@ const CreateAgentPage = () => {
                   </SelectContent>
                 </Select>
               )}
+            </div>
+
+            {/* Playbook — the telephone manner, so the script can be about the business */}
+            <div className="space-y-2">
+              <Label htmlFor="playbook">How it should handle the call</Label>
+              <Select value={playbook} onValueChange={setPlaybook}>
+                <SelectTrigger id="playbook" className="rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLAYBOOKS.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-400">
+                {PLAYBOOKS.find((p) => p.id === playbook)?.summary}{" "}
+                Speaking rules — one question at a time, no jargon read aloud, admit when unsure — are
+                always added, so your script only needs to cover your business.
+              </p>
+            </div>
+
+            {/* Live tools — what it can DO, not just say */}
+            <div className="space-y-2">
+              <Label>What it can do during the call</Label>
+              <div className="space-y-2 rounded-xl border border-slate-200 p-3">
+                {LIVE_TOOLS.map((tool) => (
+                  <label key={tool.id} className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={liveTools.includes(tool.id)}
+                      onChange={(e) =>
+                        setLiveTools((prev) =>
+                          e.target.checked ? [...prev, tool.id] : prev.filter((x) => x !== tool.id),
+                        )
+                      }
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-[#00D4FF]"
+                    />
+                    <span className="flex-1">
+                      <span className="block text-sm text-slate-700">{tool.label}</span>
+                      <span className="block text-xs text-slate-400">{tool.summary}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400">
+                Anything the agent takes down appears under Enquiries.
+              </p>
             </div>
 
             {/* Knowledge bases — facts the agent can look up while talking */}

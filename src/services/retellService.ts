@@ -339,7 +339,20 @@ export function updateLlm(
 
 // ---------- Grouped default export for ergonomic imports ----------
 
+/**
+ * Escape hatch for endpoints without a typed wrapper here.
+ *
+ * The proxy forwards whatever path it is given, so conversation-flow calls
+ * (/create-conversation-flow and friends, which are unversioned) go through
+ * this rather than gaining near-identical wrappers each. Everything still
+ * passes the same auth, logging and error translation as the typed calls.
+ */
+export function raw<T>(req: ProxyBody): Promise<T> {
+  return callRetell<T>(req);
+}
+
 export const retellService = {
+  raw,
   createLlm,
   createAgent,
   getAgent,

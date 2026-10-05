@@ -84,6 +84,7 @@ export type Database = {
           prompt: string | null
           retell_agent_id: string | null
           retell_agent_version: number | null
+          retell_conversation_flow_id: string | null
           retell_llm_id: string | null
           retell_voice_id: string | null
           status: string
@@ -105,6 +106,7 @@ export type Database = {
           prompt?: string | null
           retell_agent_id?: string | null
           retell_agent_version?: number | null
+          retell_conversation_flow_id?: string | null
           retell_llm_id?: string | null
           retell_voice_id?: string | null
           status?: string
@@ -126,6 +128,7 @@ export type Database = {
           prompt?: string | null
           retell_agent_id?: string | null
           retell_agent_version?: number | null
+          retell_conversation_flow_id?: string | null
           retell_llm_id?: string | null
           retell_voice_id?: string | null
           status?: string
@@ -762,9 +765,11 @@ export type Database = {
           friendly_name: string | null
           id: string
           linked_agent_id: string | null
+          on_trunk: boolean | null
           provider: string | null
           retell_phone_number_id: string
           status: string
+          trunk_checked_at: string | null
           twilio_phone_number: string
           updated_at: string
           user_id: string
@@ -774,9 +779,11 @@ export type Database = {
           friendly_name?: string | null
           id?: string
           linked_agent_id?: string | null
+          on_trunk?: boolean | null
           provider?: string | null
           retell_phone_number_id: string
           status?: string
+          trunk_checked_at?: string | null
           twilio_phone_number: string
           updated_at?: string
           user_id: string
@@ -786,9 +793,11 @@ export type Database = {
           friendly_name?: string | null
           id?: string
           linked_agent_id?: string | null
+          on_trunk?: boolean | null
           provider?: string | null
           retell_phone_number_id?: string
           status?: string
+          trunk_checked_at?: string | null
           twilio_phone_number?: string
           updated_at?: string
           user_id?: string
