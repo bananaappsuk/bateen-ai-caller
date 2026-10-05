@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PhoneIncoming, Users, Clock, CheckCircle2, Loader2, Hash, Bot } from "lucide-react";
+import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +31,8 @@ const InboundOverviewPage = () => {
         setStats(s);
         setRecent(calls);
         setNumbers(nums);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Could not load your inbound overview.");
       } finally {
         setLoading(false);
       }

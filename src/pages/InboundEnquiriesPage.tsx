@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Users, Loader2, Search, FileText } from "lucide-react";
+import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +31,8 @@ const statusStyles: Record<string, string> = {
 const InboundEnquiriesPage = () => {
   const [rows, setRows] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  // Distinguishes "nothing here" from "we could not find out".
+  const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<string>("All");
   const [selected, setSelected] = useState<Enquiry | null>(null);
@@ -38,6 +41,9 @@ const InboundEnquiriesPage = () => {
     (async () => {
       try {
         setRows(await listEnquiries());
+      } catch (err) {
+        setFailed(true);
+        toast.error(err instanceof Error ? err.message : "Could not load enquiries.");
       } finally {
         setLoading(false);
       }
@@ -131,7 +137,7 @@ const InboundEnquiriesPage = () => {
                 <Users className="h-8 w-8 text-slate-300" />
               </div>
               <h2 className="text-lg font-semibold text-slate-900">
-                {rows.length === 0 ? "No enquiries yet" : "Nothing matches that filter"}
+                {failed ? "Couldn't load your enquiries" : rows.length === 0 ? "No enquiries yet" : "Nothing matches that filter"}
               </h2>
               <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
                 {rows.length === 0

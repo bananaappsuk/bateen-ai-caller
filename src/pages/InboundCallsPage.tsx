@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PhoneIncoming, Loader2, FileText, Play, Search } from "lucide-react";
+import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +33,8 @@ function duration(ms: number | null) {
 const InboundCallsPage = () => {
   const [calls, setCalls] = useState<InboundCall[]>([]);
   const [loading, setLoading] = useState(true);
+  // Distinguishes "nothing here" from "we could not find out".
+  const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<InboundCall | null>(null);
 
@@ -39,6 +42,9 @@ const InboundCallsPage = () => {
     (async () => {
       try {
         setCalls(await listInboundCalls());
+      } catch (err) {
+        setFailed(true);
+        toast.error(err instanceof Error ? err.message : "Could not load calls.");
       } finally {
         setLoading(false);
       }
@@ -111,7 +117,7 @@ const InboundCallsPage = () => {
                 <PhoneIncoming className="h-8 w-8 text-slate-300" />
               </div>
               <h2 className="text-lg font-semibold text-slate-900">
-                {calls.length === 0 ? "No inbound calls yet" : "No calls match that search"}
+                {failed ? "Couldn't load your calls" : calls.length === 0 ? "No inbound calls yet" : "No calls match that search"}
               </h2>
               <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
                 {calls.length === 0
