@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { CallModeProvider } from "@/lib/callMode";
@@ -23,12 +23,26 @@ const addInboundNumber = vi.fn();
 const removeInboundNumber = vi.fn();
 const assignAgentToNumber = vi.fn();
 const listInboundNumbers = vi.fn(async () => numbers);
+// What the account owns. +447700900123 is already set up, so it must not be
+// offered again; +447414227571 is ours but not on the trunk, so it can never
+// receive a call and must not be selectable.
+const platformNumbers = [
+  { phone_number: "+447700900123", on_trunk: true },
+  { phone_number: "+447828730643", on_trunk: true },
+  { phone_number: "+447414227571", on_trunk: false },
+];
+const listPlatformNumbers = vi.fn(async () => platformNumbers);
+const syncPhoneNumbers = vi.fn(async () => ({
+  message: "14 numbers checked against the Twilio trunk.", trunkVerified: true, total: 14,
+}));
 
 vi.mock("@/services/inboundService", () => ({
   listInboundNumbers: () => listInboundNumbers(),
   addInboundNumber: (p: string, l?: string) => addInboundNumber(p, l),
   removeInboundNumber: (id: string) => removeInboundNumber(id),
   assignAgentToNumber: (id: string, a: string | null) => assignAgentToNumber(id, a),
+  listPlatformNumbers: () => listPlatformNumbers(),
+  syncPhoneNumbers: () => syncPhoneNumbers(),
   listInboundCalls: vi.fn(async () => []),
   listEnquiries: vi.fn(async () => []),
   getInboundStats: vi.fn(async () => ({ totalCalls: 0, answered: 0, enquiries: 0, avgDurationSec: 0, byStatus: {} })),
@@ -63,7 +77,15 @@ beforeEach(() => {
   removeInboundNumber.mockResolvedValue(undefined);
   assignAgentToNumber.mockResolvedValue(undefined);
   listInboundNumbers.mockResolvedValue(numbers);
+  listPlatformNumbers.mockResolvedValue(platformNumbers);
 });
+
+/** Picks a number from the dialog's dropdown, the only way to supply one now. */
+const chooseNumber = async (user: ReturnType<typeof userEvent.setup>, value: string) => {
+  const dialog = screen.getByRole("dialog");
+  await user.click(within(dialog).getByRole("combobox"));
+  await user.click(await screen.findByRole("option", { name: new RegExp(value.replace("+", "\\+")) }));
+};
 
 describe("the Add Number dialog", () => {
   it("is closed until the button is clicked", async () => {
@@ -76,17 +98,16 @@ describe("the Add Number dialog", () => {
     const user = userEvent.setup();
     await mount();
     expect(await openAddDialog(user)).toBeInTheDocument();
-    expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/label/i)).toBeInTheDocument();
   });
 
-  it("keeps Add disabled until a number is typed", async () => {
+  it("keeps Add disabled until a number is chosen", async () => {
     const user = userEvent.setup();
     await mount();
     await openAddDialog(user);
     const add = screen.getByRole("button", { name: /^add$/i });
     expect(add).toBeDisabled();
-    await user.type(screen.getByLabelText(/phone number/i), "07700900999");
+    await chooseNumber(user, "+447828730643");
     expect(add).toBeEnabled();
   });
 
@@ -101,42 +122,32 @@ describe("the Add Number dialog", () => {
 });
 
 describe("adding a number", () => {
-  it("rejects a non-UK number before calling the server", async () => {
+  it("saves exactly the number that was chosen", async () => {
     const user = userEvent.setup();
     await mount();
     await openAddDialog(user);
-    await user.type(screen.getByLabelText(/phone number/i), "12345");
+    await chooseNumber(user, "+447828730643");
     await user.click(screen.getByRole("button", { name: /^add$/i }));
-    expect(addInboundNumber).not.toHaveBeenCalled();
-    expect(toasts.error).toHaveBeenCalledWith(expect.stringMatching(/valid UK number/i));
-  });
-
-  it("normalises a local format to E.164 before saving", async () => {
-    const user = userEvent.setup();
-    await mount();
-    await openAddDialog(user);
-    await user.type(screen.getByLabelText(/phone number/i), "07572 917511");
-    await user.click(screen.getByRole("button", { name: /^add$/i }));
-    await waitFor(() => expect(addInboundNumber).toHaveBeenCalledWith("+447572917511", ""));
+    await waitFor(() => expect(addInboundNumber).toHaveBeenCalledWith("+447828730643", ""));
   });
 
   it("passes the label through", async () => {
     const user = userEvent.setup();
     await mount();
     await openAddDialog(user);
-    await user.type(screen.getByLabelText(/phone number/i), "07572917511");
+    await chooseNumber(user, "+447828730643");
     await user.type(screen.getByLabelText(/label/i), "  Reception  ");
     await user.click(screen.getByRole("button", { name: /^add$/i }));
-    await waitFor(() => expect(addInboundNumber).toHaveBeenCalledWith("+447572917511", "Reception"));
+    await waitFor(() => expect(addInboundNumber).toHaveBeenCalledWith("+447828730643", "Reception"));
   });
 
   it("confirms, closes and reloads the list on success", async () => {
     const user = userEvent.setup();
     await mount();
     await openAddDialog(user);
-    await user.type(screen.getByLabelText(/phone number/i), "07572917511");
+    await chooseNumber(user, "+447828730643");
     await user.click(screen.getByRole("button", { name: /^add$/i }));
-    await waitFor(() => expect(toasts.success).toHaveBeenCalledWith("+447572917511 added."));
+    await waitFor(() => expect(toasts.success).toHaveBeenCalledWith("+447828730643 added."));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(listInboundNumbers).toHaveBeenCalledTimes(2); // initial load + reload
   });
@@ -151,7 +162,7 @@ describe("adding a number", () => {
     const user = userEvent.setup();
     await mount();
     await openAddDialog(user);
-    await user.type(screen.getByLabelText(/phone number/i), "07572917511");
+    await chooseNumber(user, "+447828730643");
     await user.click(screen.getByRole("button", { name: /^add$/i }));
     await waitFor(() => expect(toasts.error).toHaveBeenCalledWith(expect.stringMatching(/do not have permission/i)));
     expect(toasts.error).not.toHaveBeenCalledWith("Could not add the number.");
@@ -163,21 +174,21 @@ describe("adding a number", () => {
     const user = userEvent.setup();
     await mount();
     await openAddDialog(user);
-    await user.type(screen.getByLabelText(/phone number/i), "07700900123");
+    await chooseNumber(user, "+447828730643");
     await user.click(screen.getByRole("button", { name: /^add$/i }));
     await waitFor(() => expect(toasts.error).toHaveBeenCalledWith("That number is already set up."));
   });
 
-  it("leaves the dialog open on failure so the typing is not lost", async () => {
+  it("leaves the dialog open on failure so the choice is not lost", async () => {
     addInboundNumber.mockRejectedValue(new Error("nope"));
     const user = userEvent.setup();
     await mount();
     await openAddDialog(user);
-    await user.type(screen.getByLabelText(/phone number/i), "07572917511");
+    await chooseNumber(user, "+447828730643");
     await user.click(screen.getByRole("button", { name: /^add$/i }));
     await waitFor(() => expect(toasts.error).toHaveBeenCalled());
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByLabelText(/phone number/i)).toHaveValue("07572917511");
+    expect(screen.getByRole("dialog")).toHaveTextContent("+447828730643");
   });
 });
 
@@ -241,5 +252,91 @@ describe("the empty state", () => {
     listInboundNumbers.mockResolvedValue([]);
     await mount();
     expect(await screen.findByText("No inbound numbers")).toBeInTheDocument();
+  });
+});
+
+describe("the picker only offers numbers a call can actually reach", () => {
+  // The whole reason this replaced a free-text box: a number can be ours,
+  // registered with Retell, and still never ring, because what decides that is
+  // whether Twilio has it on the SIP trunk. 12 of this account's 14 numbers are
+  // in Retell but off the trunk.
+  const openPicker = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole("button", { name: /add number/i }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("combobox"));
+  };
+
+  it("there is no free-text field to type an arbitrary number into", async () => {
+    const user = userEvent.setup();
+    await mount();
+    await user.click(await screen.findByRole("button", { name: /add number/i }));
+    await screen.findByRole("dialog");
+    // Only the optional label remains typeable.
+    expect(screen.queryByPlaceholderText(/07700 900123/)).not.toBeInTheDocument();
+  });
+
+  it("offers a number that is on the trunk", async () => {
+    const user = userEvent.setup();
+    await mount();
+    await openPicker(user);
+    expect(await screen.findByRole("option", { name: /\+447828730643/ })).toBeEnabled();
+  });
+
+  it("will not let a number off the trunk be chosen", async () => {
+    const user = userEvent.setup();
+    await mount();
+    await openPicker(user);
+    const dead = await screen.findByRole("option", { name: /\+447414227571/ });
+    expect(dead).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("says why those ones cannot be used", async () => {
+    const user = userEvent.setup();
+    await mount();
+    await openPicker(user);
+    expect(screen.getByText(/not on your Twilio SIP trunk/i)).toBeInTheDocument();
+  });
+
+  it("does not offer a number that is already set up", async () => {
+    const user = userEvent.setup();
+    await mount();
+    await openPicker(user);
+    // +447700900123 is already in the list with an agent on it.
+    expect(screen.queryByRole("option", { name: /\+447700900123/ })).not.toBeInTheDocument();
+  });
+
+  it("explains itself when every number is already in use", async () => {
+    listPlatformNumbers.mockResolvedValue([{ phone_number: "+447700900123", on_trunk: true }]);
+    const user = userEvent.setup();
+    await mount();
+    await openPicker(user);
+    expect(await screen.findByText(/no numbers left to add/i)).toBeInTheDocument();
+  });
+});
+
+describe("refreshing the list of numbers", () => {
+  it("re-reads from Retell and Twilio, then reloads the picker", async () => {
+    const user = userEvent.setup();
+    await mount();
+    await user.click(await screen.findByRole("button", { name: /add number/i }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: /refresh list/i }));
+    await waitFor(() => expect(syncPhoneNumbers).toHaveBeenCalled());
+    await waitFor(() => expect(listPlatformNumbers).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(toasts.success).toHaveBeenCalledWith("14 numbers checked against the Twilio trunk."),
+    );
+  });
+
+  it("reports a refresh failure instead of leaving a stale list looking current", async () => {
+    syncPhoneNumbers.mockRejectedValue(new Error("Could not read your numbers from Retell (502)."));
+    const user = userEvent.setup();
+    await mount();
+    await user.click(await screen.findByRole("button", { name: /add number/i }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: /refresh list/i }));
+    await waitFor(() =>
+      expect(toasts.error).toHaveBeenCalledWith(expect.stringMatching(/could not read your numbers/i)),
+    );
   });
 });

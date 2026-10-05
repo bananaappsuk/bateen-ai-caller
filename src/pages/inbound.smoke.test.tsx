@@ -18,6 +18,8 @@ vi.mock("@/lib/creditsContext", () => ({
 }));
 
 vi.mock("@/services/inboundService", () => ({
+  listPlatformNumbers: vi.fn(async () => [{ phone_number: "+447828730643", on_trunk: true }]),
+  syncPhoneNumbers: vi.fn(async () => ({ message: "synced", trunkVerified: true, total: 1 })),
   getInboundStats: vi.fn(async () => ({
     totalCalls: 2,
     answered: 2,

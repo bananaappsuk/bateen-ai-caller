@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Hash, Plus, Trash2, Loader2, PhoneIncoming } from "lucide-react";
+import { Hash, Plus, Trash2, Loader2, PhoneIncoming, RefreshCw, AlertTriangle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,10 @@ import {
   addInboundNumber,
   assignAgentToNumber,
   removeInboundNumber,
+  listPlatformNumbers,
+  syncPhoneNumbers,
   type InboundNumber,
+  type PlatformNumber,
 } from "@/services/inboundService";
 import { listAgents, type AgentRow } from "@/services/agentsService";
 import { normalizeUkPhone } from "@/lib/phone";
@@ -42,13 +45,24 @@ const InboundNumbersPage = () => {
   const [saving, setSaving] = useState(false);
   const [phone, setPhone] = useState("");
   const [label, setLabel] = useState("");
+  const [platform, setPlatform] = useState<PlatformNumber[]>([]);
+  const [syncing, setSyncing] = useState(false);
+
+  // What the picker offers: our numbers, minus the ones already set up.
+  const taken = new Set(numbers.map((n) => n.phone_number));
+  const selectable = platform.filter((p) => !taken.has(p.phone_number));
 
   const load = async () => {
     try {
-      const [nums, all] = await Promise.all([listInboundNumbers(), listAgents()]);
+      const [nums, all, owned] = await Promise.all([
+        listInboundNumbers(),
+        listAgents(),
+        listPlatformNumbers(),
+      ]);
       setNumbers(nums);
       // Only inbound agents can answer a number.
       setAgents(all.filter((a) => a.direction === "inbound"));
+      setPlatform(owned);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not load numbers.");
     } finally {
@@ -60,10 +74,25 @@ const InboundNumbersPage = () => {
     load();
   }, []);
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await syncPhoneNumbers();
+      setPlatform(await listPlatformNumbers());
+      toast.success(res.message);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not refresh your numbers.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleAdd = async () => {
+    // The number comes from the picker, so it is already in E.164 and known to
+    // be one of ours — nothing to normalise and nothing to reject.
     const normalized = normalizeUkPhone(phone);
     if (!normalized) {
-      toast.error("Enter a valid UK number, e.g. 07700 900123.");
+      toast.error("Choose a number first.");
       return;
     }
     setSaving(true);
@@ -213,14 +242,50 @@ const InboundNumbersPage = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="num">Phone number</Label>
-              <Input
-                id="num"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="07700 900123"
-                className="rounded-xl"
-              />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="num">Phone number</Label>
+                <button
+                  type="button"
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-cyan-600 hover:text-cyan-700 disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`} />
+                  {syncing ? "Refreshing…" : "Refresh list"}
+                </button>
+              </div>
+              <Select value={phone} onValueChange={setPhone}>
+                <SelectTrigger id="num" className="rounded-xl">
+                  <SelectValue placeholder="Choose one of your numbers" />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectable.length === 0 ? (
+                    <div className="px-2 py-6 text-center text-sm text-slate-500">
+                      No numbers left to add. Press Refresh list if you have just bought one.
+                    </div>
+                  ) : (
+                    selectable.map((n) => (
+                      <SelectItem key={n.phone_number} value={n.phone_number} disabled={n.on_trunk === false}>
+                        <span className="flex items-center gap-2">
+                          {n.phone_number}
+                          {n.on_trunk === false && (
+                            <span className="text-xs text-amber-600">not on the trunk</span>
+                          )}
+                          {n.on_trunk === null && <span className="text-xs text-slate-400">unverified</span>}
+                        </span>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {/* The reason a number can be ours and still never ring. */}
+              {selectable.some((n) => n.on_trunk === false) && (
+                <p className="flex items-start gap-1.5 text-xs text-slate-500">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-px" />
+                  Greyed-out numbers are not on your Twilio SIP trunk, so calls to them never reach
+                  your agents. Add them to the trunk in Twilio first.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="lbl">Label (optional)</Label>

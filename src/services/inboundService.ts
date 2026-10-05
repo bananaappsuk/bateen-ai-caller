@@ -5,7 +5,7 @@
 // enquiry is a lead with no campaign. Inbound calls are `calls` rows with
 // direction "inbound", written by the retell-webhook when a call arrives.
 import { supabase } from "@/integrations/supabase/client";
-import { asError } from "@/lib/functionErrors";
+import { asError, throwFunctionError } from "@/lib/functionErrors";
 
 export interface InboundNumber {
   id: string;
@@ -148,4 +148,49 @@ export async function getInboundStats(): Promise<InboundStats> {
     avgDurationSec: timed ? Math.round(durationTotal / timed / 1000) : 0,
     byStatus,
   };
+}
+
+// ---------- numbers this tenant could point an agent at ----------
+
+export interface PlatformNumber {
+  phone_number: string;
+  /** True when Twilio confirms it is on the SIP trunk. Null = never checked. */
+  on_trunk: boolean | null;
+}
+
+/**
+ * The numbers we know about, with whether a call can actually reach them.
+ *
+ * Being registered with Retell is not enough: a number only rings here if it
+ * is on the Twilio SIP trunk. Of the 14 numbers Retell holds for this account,
+ * 12 are not on the trunk and would silently never receive a call, which is
+ * why the Numbers page offers this list instead of a free-text box.
+ */
+export async function listPlatformNumbers(): Promise<PlatformNumber[]> {
+  const { data, error } = await supabase
+    .from("phone_numbers")
+    .select("twilio_phone_number, on_trunk")
+    .order("twilio_phone_number");
+  if (error) throw asError(error);
+  return (data ?? [])
+    .filter((r) => Boolean((r as { twilio_phone_number: string | null }).twilio_phone_number))
+    .map((r) => {
+      const row = r as { twilio_phone_number: string; on_trunk: boolean | null };
+      return { phone_number: row.twilio_phone_number, on_trunk: row.on_trunk };
+    });
+}
+
+export interface SyncResult {
+  message: string;
+  trunkVerified: boolean;
+  total: number;
+}
+
+/** Re-reads Retell and, when Twilio is configured, re-checks the trunk. */
+export async function syncPhoneNumbers(): Promise<SyncResult> {
+  const { data, error } = await supabase.functions.invoke("sync-phone-numbers", { body: {} });
+  if (error || (data as { error?: string } | null)?.error) {
+    await throwFunctionError(error, data, "Could not refresh your numbers.");
+  }
+  return data as SyncResult;
 }

@@ -83,6 +83,8 @@ vi.mock("@/services/inboundService", () => ({
   addInboundNumber: vi.fn(), assignAgentToNumber: vi.fn(), removeInboundNumber: vi.fn(),
   listInboundCalls: vi.fn(async () => [fx.inboundCall]),
   listEnquiries: vi.fn(async () => [fx.enquiry]),
+  listPlatformNumbers: vi.fn(async () => [{ phone_number: "+447828730643", on_trunk: true }]),
+  syncPhoneNumbers: vi.fn(async () => ({ message: "synced", trunkVerified: true, total: 1 })),
   getInboundStats: vi.fn(async () => ({ totalCalls: 1, answered: 1, enquiries: 1, avgDurationSec: 36, byStatus: { ended: 1 } })),
 }));
 vi.mock("@/services/notificationSettingsService", () => ({

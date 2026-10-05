@@ -65,6 +65,8 @@ vi.mock("@/services/knowledgeBaseService", () => ({
 vi.mock("@/services/inboundService", () => ({
   listInboundNumbers: vi.fn(async () => []), listInboundCalls: vi.fn(async () => []),
   listEnquiries: vi.fn(async () => []),
+  listPlatformNumbers: vi.fn(async () => [{ phone_number: "+447828730643", on_trunk: true }]),
+  syncPhoneNumbers: vi.fn(async () => ({ message: "synced", trunkVerified: true, total: 1 })),
   getInboundStats: vi.fn(async () => ({ totalCalls: 0, answered: 0, enquiries: 0, avgDurationSec: 0, byStatus: {} })),
   addInboundNumber: vi.fn(), assignAgentToNumber: vi.fn(), removeInboundNumber: vi.fn(),
 }));
