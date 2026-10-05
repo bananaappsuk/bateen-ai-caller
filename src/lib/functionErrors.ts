@@ -83,6 +83,22 @@ export async function describeFunctionFailure(
 }
 
 /** Throwing form, for services that only need the message. */
+/**
+ * The same failure as `throwFunctionError`, handed back rather than thrown.
+ *
+ * `await throwFunctionError(...)` resolves to `never`, but TypeScript does not
+ * treat an awaited call as ending the branch, so a narrowed value stayed a
+ * union afterwards and needed a cast. `throw await functionError(...)` is a
+ * real throw, which narrowing does understand.
+ */
+export async function functionError(error: unknown, data: unknown, fallback?: string): Promise<Error> {
+  const { message, status, sessionExpired } = await describeFunctionFailure(error, data, fallback);
+  const err = new Error(message) as Error & { status?: number; sessionExpired?: boolean };
+  err.status = status;
+  err.sessionExpired = sessionExpired;
+  return err;
+}
+
 export async function throwFunctionError(error: unknown, data: unknown, fallback?: string): Promise<never> {
   const { message } = await describeFunctionFailure(error, data, fallback);
   throw new Error(message);

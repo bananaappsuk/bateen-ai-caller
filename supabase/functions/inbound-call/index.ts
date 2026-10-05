@@ -63,6 +63,32 @@ Deno.serve(async (req) => {
       return passThrough();
     }
 
+    // Who is ringing, resolved before the call connects.
+    //
+    // The agent can also ask mid-call via look_up_caller, but that costs a beat
+    // of silence on every repeat call and the greeting has already gone out by
+    // then. Doing it here lets the very first sentence use their name. A
+    // withheld number resolves to nothing, which is why these are empty
+    // strings rather than absent: an unset dynamic variable makes Retell speak
+    // the literal "{{caller_name}}" out loud.
+    let callerName = "";
+    let callerKnown = "no";
+    if (fromNumber) {
+      const { data: known } = await supabase
+        .from("leads")
+        .select("name")
+        .eq("user_id", number.user_id)
+        .eq("phone", fromNumber)
+        .not("name", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (known?.name) {
+        callerName = known.name as string;
+        callerKnown = "yes";
+      }
+    }
+
     return json({
       call_inbound: {
         override_agent_id: agent.retell_agent_id,
@@ -77,6 +103,8 @@ Deno.serve(async (req) => {
         dynamic_variables: {
           caller_number: fromNumber,
           line_name: number.label ?? "",
+          caller_name: callerName,
+          caller_known: callerKnown,
         },
       },
     });

@@ -14,6 +14,7 @@ import {
   Lock,
   LogOut,
   ChevronsUpDown,
+  type LucideIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,14 +35,22 @@ import logo from "@/assets/ai-tele-caller-logo.png";
 
 // Outbound dials lead lists from campaigns; inbound answers numbers. They have
 // separate agents, screens and data, so the nav swaps wholesale with the mode.
-const OUTBOUND_NAV = [
+interface NavItem {
+  icon: LucideIcon;
+  label: string;
+  href: string;
+  /** Shows a padlock: visible but not yet available on this plan. */
+  locked?: boolean;
+}
+
+const OUTBOUND_NAV: NavItem[] = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
   { icon: Bot, label: "AI Agents", href: "/ai-agents" },
   { icon: PhoneOutgoing, label: "Campaigns", href: "/dashboard/campaigns" },
   { icon: Users, label: "Leads", href: "/dashboard/leads" },
 ];
 
-const INBOUND_NAV = [
+const INBOUND_NAV: NavItem[] = [
   { icon: LayoutDashboard, label: "Overview", href: "/inbound" },
   { icon: Bot, label: "AI Agents", href: "/inbound/agents" },
   { icon: Hash, label: "Numbers", href: "/inbound/numbers" },
@@ -50,7 +59,7 @@ const INBOUND_NAV = [
 ];
 
 // Knowledge bases, billing and help are the same whichever way the calls go.
-const SHARED_NAV = [
+const SHARED_NAV: NavItem[] = [
   { icon: BookOpen, label: "Knowledge Base", href: "/dashboard/knowledge-base" },
   { icon: SettingsIcon, label: "Settings", href: "/dashboard/settings" },
   { icon: GraduationCap, label: "Academy", href: "/dashboard/academy", locked: true },

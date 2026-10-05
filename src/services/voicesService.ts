@@ -5,7 +5,7 @@
 // raw list contains every tenant's clone. The function returns the stock voices
 // plus only this user's own.
 import { supabase } from "@/integrations/supabase/client";
-import { throwFunctionError, asError } from "@/lib/functionErrors";
+import { throwFunctionError, functionError, asError } from "@/lib/functionErrors";
 import type { RetellVoice } from "@/services/retellService";
 
 export interface CustomVoiceRow {
@@ -32,7 +32,7 @@ export async function listAgentVoices(): Promise<RetellVoice[]> {
     { body: {} },
   );
   if (error) await throwFunctionError(error, data, "Could not load voices.");
-  if (!Array.isArray(data)) await throwFunctionError(null, data, "Could not load voices.");
+  if (!Array.isArray(data)) throw await functionError(null, data, "Could not load voices.");
   return data;
 }
 

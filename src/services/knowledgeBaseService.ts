@@ -6,7 +6,7 @@
 // Retell directly: all tenants share one Retell account, so the raw list would
 // expose everyone's knowledge bases.
 import { supabase } from "@/integrations/supabase/client";
-import { throwFunctionError, asError } from "@/lib/functionErrors";
+import { throwFunctionError, functionError, asError } from "@/lib/functionErrors";
 
 export type KnowledgeBaseStatus = "in_progress" | "complete" | "error" | "refreshing_in_progress";
 
@@ -58,7 +58,7 @@ export async function listKnowledgeBases(): Promise<KnowledgeBase[]> {
     { body: {} },
   );
   if (error) await throwFunctionError(error, data, "Could not load knowledge bases.");
-  if (!Array.isArray(data)) await throwFunctionError(null, data, "Could not load knowledge bases.");
+  if (!Array.isArray(data)) throw await functionError(null, data, "Could not load knowledge bases.");
   return data;
 }
 

@@ -328,7 +328,7 @@ export function getLlm(llmId: string): Promise<RetellLlm> {
 
 export function updateLlm(
   llmId: string,
-  patch: { general_prompt?: string; general_tools?: unknown[] },
+  patch: { general_prompt?: string; general_tools?: unknown[]; knowledge_base_ids?: string[] },
 ): Promise<RetellLlm> {
   return callRetell<RetellLlm>({
     path: `/update-retell-llm/${encodeURIComponent(llmId)}`,

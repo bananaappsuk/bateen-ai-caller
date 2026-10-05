@@ -57,6 +57,27 @@ async function resolveTenant(
 /** Last four digits, so a log line never carries a whole phone number. */
 const tail = (n: string | undefined) => (n ? `…${n.slice(-4)}` : "unknown");
 
+// A withheld caller does not arrive as an empty string. Twilio sends its
+// anonymous sentinel +266696687 ("anonymous" on a keypad) and carriers vary
+// with "anonymous", "unavailable", "private" or "restricted". Treated as a
+// real number, each of those becomes a shared fake customer that every
+// withheld caller reads and writes, so they are rejected up front.
+const WITHHELD = new Set(["anonymous", "unavailable", "private", "restricted", "unknown", "+266696687", "266696687"]);
+const usableNumber = (n: string | undefined): string | null => {
+  const v = (n ?? "").trim();
+  if (!v || WITHHELD.has(v.toLowerCase())) return null;
+  // Anything that is not a plausible E.164 number is not something to key on.
+  return /^\+?[0-9]{7,15}$/.test(v.replace(/[\s()-]/g, "")) ? v : null;
+};
+
+/** Keeps the latest message first without throwing away what came before. */
+const appendSummary = (previous: string | null | undefined, next: string): string => {
+  const prior = (previous ?? "").trim();
+  if (!prior) return next;
+  if (prior.startsWith(next)) return prior;
+  return `${next}\n\nEarlier: ${prior}`.slice(0, 2000);
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -70,7 +91,7 @@ Deno.serve(async (req) => {
     const call = (body.call ?? {}) as Record<string, unknown>;
     const toolName = String(body.name ?? url.searchParams.get("tool") ?? "");
     const callId = (call.call_id ?? args.call_id) as string | undefined;
-    const fromNumber = ((call.from_number ?? args.from_number) as string | undefined)?.trim();
+    const fromNumber = usableNumber((call.from_number ?? args.from_number) as string | undefined);
 
     const supabase = admin();
     const userId = await resolveTenant(supabase, callId, agentId);
@@ -83,7 +104,14 @@ Deno.serve(async (req) => {
     switch (toolName) {
       // ---- who is ringing, and have we spoken before? --------------------
       case "look_up_caller": {
-        if (!fromNumber) return say("I don't have your number showing, so I can't look you up.");
+        if (!fromNumber) {
+          // Withheld or missing: say so rather than claiming they are new,
+          // which would make a regular caller feel like a stranger.
+          return say(
+            "Your number is not showing, so I can't look you up. I can still help — I'll just need to ask you a couple of things.",
+            { known: false, number_withheld: true },
+          );
+        }
         const { data } = await supabase
           .from("leads")
           .select("name, lead_status, summary, created_at")
@@ -108,18 +136,29 @@ Deno.serve(async (req) => {
         const message = String(args.message ?? "").trim();
         if (!message) return say("I didn't catch the message — could you say it again?");
         const name = (args.name as string | undefined)?.trim() || null;
-        const phone = fromNumber ?? (args.phone as string | undefined) ?? null;
-        if (!phone) return say("I need a number to put the message against.");
+        const phone = fromNumber ?? usableNumber(args.phone as string | undefined);
+        if (!phone) {
+          return say("I can't see the number you're ringing from — what's the best number to reach you on?", {
+            needs_number: true,
+          });
+        }
 
         const { data: existing } = await supabase
-          .from("leads").select("id").eq("user_id", userId).eq("phone", phone).maybeSingle();
-        const patch = {
-          name, summary: message, lead_status: "Requested Callback" as const,
-        };
+          .from("leads").select("id, name, summary")
+          .eq("user_id", userId).eq("phone", phone).maybeSingle();
         if (existing?.id) {
-          await supabase.from("leads").update(patch).eq("id", existing.id);
+          // Only overwrite a name when a new one was actually given: a caller
+          // who rings back without restating theirs used to have it erased.
+          await supabase.from("leads").update({
+            ...(name ? { name } : {}),
+            summary: appendSummary(existing.summary as string | null, message),
+            lead_status: "Requested Callback" as const,
+          }).eq("id", existing.id);
         } else {
-          await supabase.from("leads").insert({ user_id: userId, phone, campaign_id: null, ...patch });
+          await supabase.from("leads").insert({
+            user_id: userId, phone, campaign_id: null,
+            name, summary: message, lead_status: "Requested Callback" as const,
+          });
         }
         return say("I've taken that down and passed it on. Someone will come back to you.", { saved: true });
       }
@@ -127,21 +166,27 @@ Deno.serve(async (req) => {
       // ---- ask for a callback --------------------------------------------
       case "book_callback": {
         const when = String(args.when ?? "").trim();
-        const phone = fromNumber ?? (args.phone as string | undefined) ?? null;
-        if (!phone) return say("I need a number to call you back on.");
+        const phone = fromNumber ?? usableNumber(args.phone as string | undefined);
+        if (!phone) {
+          return say("I can't see the number you're ringing from — what's the best number to call you back on?", {
+            needs_number: true,
+          });
+        }
+        const callerName = (args.name as string | undefined)?.trim() || null;
         const note = when ? `Callback requested for ${when}.` : "Callback requested.";
 
         const { data: existing } = await supabase
-          .from("leads").select("id, summary").eq("user_id", userId).eq("phone", phone).maybeSingle();
+          .from("leads").select("id, name, summary")
+          .eq("user_id", userId).eq("phone", phone).maybeSingle();
         if (existing?.id) {
           await supabase.from("leads").update({
+            ...(callerName ? { name: callerName } : {}),
             lead_status: "Requested Callback",
-            summary: [existing.summary, note].filter(Boolean).join(" "),
+            summary: appendSummary(existing.summary as string | null, note),
           }).eq("id", existing.id);
         } else {
           await supabase.from("leads").insert({
-            user_id: userId, phone, campaign_id: null,
-            name: (args.name as string | undefined) ?? null,
+            user_id: userId, phone, campaign_id: null, name: callerName,
             lead_status: "Requested Callback", summary: note,
           });
         }

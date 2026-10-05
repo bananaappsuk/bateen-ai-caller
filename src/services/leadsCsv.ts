@@ -117,7 +117,7 @@ export async function fileToCsvText(file: File): Promise<string> {
 
   // Plain CSV/TSV: decode as UTF-8 and drop a leading BOM (Excel adds one).
   if (!isSpreadsheet) {
-    return new TextDecoder("utf-8").decode(buffer).replace(/^﻿/, "");
+    return new TextDecoder("utf-8").decode(buffer).replace(/^\uFEFF/, "");
   }
 
   const workbook = XLSX.read(buffer, { type: "array", cellDates: false, raw: false });
