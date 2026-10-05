@@ -84,6 +84,23 @@ Deno.serve(async (req) => {
       .eq("retell_call_id", callId)
       .maybeSingle();
 
+    // Retell tells us which agent answered, but only by its own id. The call
+    // log shows a name, so resolve it here: an outbound call gets `agent_name`
+    // from the browser, which already knows the agent, while an inbound one is
+    // created entirely from this webhook and has nothing but the Retell id.
+    // Without this lookup the Agent column stays "—" on every inbound call.
+    const retellAgentId = (call.agent_id as string) ?? null;
+    let agentName: string | null = null;
+    if (retellAgentId) {
+      const { data: agentRow } = await supabase
+        .from("agents")
+        .select("name")
+        .eq("retell_agent_id", retellAgentId)
+        .eq("user_id", inboundUserId)
+        .maybeSingle();
+      agentName = (agentRow?.name as string | undefined) ?? null;
+    }
+
     const callRow = {
       retell_call_id: callId,
       user_id: inboundUserId,
@@ -91,7 +108,10 @@ Deno.serve(async (req) => {
       call_type: "phone_call",
       from_number: fromNumber,
       to_number: (call.to_number as string) ?? null,
-      agent_id: (call.agent_id as string) ?? null,
+      agent_id: retellAgentId,
+      // Only written once resolved, so a later event whose lookup comes back
+      // empty cannot blank out a name an earlier event already stored.
+      ...(agentName ? { agent_name: agentName } : {}),
       status: (call.call_status as string) ?? "registered",
       transcript: (call.transcript as string) ?? null,
       recording_url: (call.recording_url as string) ?? null,

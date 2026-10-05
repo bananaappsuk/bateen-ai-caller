@@ -70,3 +70,46 @@ describe("enquiries are leads without a campaign", () => {
     expect(isEnquiry({ campaign_id: "c1" })).toBe(false);
   });
 });
+
+// Retell identifies the answering agent only by its own id, so the webhook
+// looks the name up in our agents table. Without that, every inbound call
+// showed "—" in the Agent column while outbound calls showed a name, because
+// the browser fills agent_name for outbound and nothing filled it for inbound.
+const agents = [{ retell_agent_id: "agent_d75", user_id: "u1", name: "IT Talent Hub Reception" }];
+
+/** Mirrors the lookup in the webhook: scoped by tenant as well as agent id. */
+const resolveAgentName = (retellAgentId: string | null, userId: string): string | null =>
+  agents.find((a) => a.retell_agent_id === retellAgentId && a.user_id === userId)?.name ?? null;
+
+/** Mirrors the spread that keeps agent_name out of the row when unresolved. */
+const agentNamePatch = (name: string | null) => (name ? { agent_name: name } : {});
+
+describe("the answering agent's name reaches the call log", () => {
+  it("resolves the name from the Retell agent id", () => {
+    expect(resolveAgentName("agent_d75", "u1")).toBe("IT Talent Hub Reception");
+  });
+
+  it("writes it onto the call row", () => {
+    expect(agentNamePatch(resolveAgentName("agent_d75", "u1"))).toEqual({
+      agent_name: "IT Talent Hub Reception",
+    });
+  });
+
+  it("will not read another tenant's agent name", () => {
+    // The lookup is scoped by user_id as well, so a shared Retell account
+    // cannot leak one customer's agent name into another's call log.
+    expect(resolveAgentName("agent_d75", "u2")).toBeNull();
+  });
+
+  it("omits the field rather than blanking a stored name when it cannot resolve", () => {
+    // call_started, call_ended and call_analyzed all write this row. If a later
+    // event resolved nothing and still set agent_name, it would wipe the name an
+    // earlier event had already stored.
+    expect(agentNamePatch(resolveAgentName("agent_unknown", "u1"))).toEqual({});
+  });
+
+  it("handles a call with no agent id at all", () => {
+    expect(resolveAgentName(null, "u1")).toBeNull();
+    expect(agentNamePatch(null)).toEqual({});
+  });
+});
