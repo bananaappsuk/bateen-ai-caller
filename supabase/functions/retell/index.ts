@@ -11,7 +11,6 @@ const corsHeaders = {
 const DEFAULT_RETELL_BASE_URL = "https://api.retellai.com";
 
 const V2_ENDPOINTS = new Set([
-  "/create-web-call",
   "/create-phone-call",
   "/get-call",
   "/list-calls",

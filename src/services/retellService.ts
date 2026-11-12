@@ -45,6 +45,8 @@ export type UpdateAgentInput = Partial<CreateAgentInput>;
 export interface WebCall {
   call_id: string;
   access_token: string;
+  transport?: "livekit" | "gateway";
+  ice_servers?: RTCIceServer[];
   call_status?: string;
   agent_id?: RetellAgentId;
   agent_name?: string;
@@ -183,7 +185,7 @@ export async function listAgents(): Promise<RetellAgent[]> {
 
 export function createWebCall(input: CreateWebCallInput): Promise<WebCall> {
   return callRetell<WebCall>({
-    path: "/create-web-call",
+    path: "/v3/create-web-call",
     method: "POST",
     body: input,
   });

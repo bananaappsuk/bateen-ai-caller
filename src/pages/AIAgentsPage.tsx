@@ -155,7 +155,12 @@ const AIAgentsPage = () => {
         toast.error(e instanceof Error ? e.message : "Call error.");
         stopActiveCall();
       });
-      await client.startCall({ accessToken: call.access_token });
+      await client.startCall({
+        accessToken: call.access_token,
+        callId: call.call_id,
+        transport: call.transport,
+        iceServers: call.ice_servers,
+      });
 
       activeAgentIdRef.current = agent.id;
       setActiveCallId(call.call_id);
