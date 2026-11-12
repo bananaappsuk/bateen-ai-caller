@@ -70,6 +70,17 @@ const usableNumber = (n: string | undefined): string | null => {
   return /^\+?[0-9]{7,15}$/.test(v.replace(/[\s()-]/g, "")) ? v : null;
 };
 
+/** Details the caller gave that have no column of their own. */
+function mergeDetails(
+  previous: unknown,
+  next: Record<string, string | null>,
+): Record<string, unknown> {
+  const base = (previous && typeof previous === "object" ? previous : {}) as Record<string, unknown>;
+  const merged = { ...base };
+  for (const [k, v] of Object.entries(next)) if (v) merged[k] = v;
+  return merged;
+}
+
 /** Keeps the latest message first without throwing away what came before. */
 const appendSummary = (previous: string | null | undefined, next: string): string => {
   const prior = (previous ?? "").trim();
@@ -136,6 +147,7 @@ Deno.serve(async (req) => {
         const message = String(args.message ?? "").trim();
         if (!message) return say("I didn't catch the message — could you say it again?");
         const name = (args.name as string | undefined)?.trim() || null;
+        const email = (args.email as string | undefined)?.trim() || null;
         const phone = fromNumber ?? usableNumber(args.phone as string | undefined);
         if (!phone) {
           return say("I can't see the number you're ringing from — what's the best number to reach you on?", {
@@ -143,9 +155,11 @@ Deno.serve(async (req) => {
           });
         }
 
-        const { data: existing } = await supabase
-          .from("leads").select("id, name, summary")
-          .eq("user_id", userId).eq("phone", phone).maybeSingle();
+        const { data: existingRows } = await supabase
+          .from("leads").select("id, name, summary, custom_data")
+          .eq("user_id", userId).eq("phone", phone)
+          .order("created_at", { ascending: false }).limit(1);
+        const existing = existingRows?.[0];
         if (existing?.id) {
           // Only overwrite a name when a new one was actually given: a caller
           // who rings back without restating theirs used to have it erased.
@@ -153,11 +167,13 @@ Deno.serve(async (req) => {
             ...(name ? { name } : {}),
             summary: appendSummary(existing.summary as string | null, message),
             lead_status: "Requested Callback" as const,
+            custom_data: mergeDetails(existing.custom_data, { email }),
           }).eq("id", existing.id);
         } else {
           await supabase.from("leads").insert({
             user_id: userId, phone, campaign_id: null,
             name, summary: message, lead_status: "Requested Callback" as const,
+            custom_data: mergeDetails(null, { email }),
           });
         }
         return say("I've taken that down and passed it on. Someone will come back to you.", { saved: true });
@@ -166,6 +182,8 @@ Deno.serve(async (req) => {
       // ---- ask for a callback --------------------------------------------
       case "book_callback": {
         const when = String(args.when ?? "").trim();
+        const email = (args.email as string | undefined)?.trim() || null;
+        const topic = (args.topic as string | undefined)?.trim() || null;
         const phone = fromNumber ?? usableNumber(args.phone as string | undefined);
         if (!phone) {
           return say("I can't see the number you're ringing from — what's the best number to call you back on?", {
@@ -173,21 +191,29 @@ Deno.serve(async (req) => {
           });
         }
         const callerName = (args.name as string | undefined)?.trim() || null;
-        const note = when ? `Callback requested for ${when}.` : "Callback requested.";
+        const note = [
+          when ? `Callback requested for ${when}.` : "Callback requested.",
+          topic ? `About: ${topic}.` : "",
+          email ? `Email: ${email}.` : "",
+        ].filter(Boolean).join(" ");
 
-        const { data: existing } = await supabase
-          .from("leads").select("id, name, summary")
-          .eq("user_id", userId).eq("phone", phone).maybeSingle();
+        const { data: existingRows } = await supabase
+          .from("leads").select("id, name, summary, custom_data")
+          .eq("user_id", userId).eq("phone", phone)
+          .order("created_at", { ascending: false }).limit(1);
+        const existing = existingRows?.[0];
         if (existing?.id) {
           await supabase.from("leads").update({
             ...(callerName ? { name: callerName } : {}),
             lead_status: "Requested Callback",
             summary: appendSummary(existing.summary as string | null, note),
+            custom_data: mergeDetails(existing.custom_data, { email, callback_at: when, topic }),
           }).eq("id", existing.id);
         } else {
           await supabase.from("leads").insert({
             user_id: userId, phone, campaign_id: null, name: callerName,
             lead_status: "Requested Callback", summary: note,
+            custom_data: mergeDetails(null, { email, callback_at: when, topic }),
           });
         }
         return say(

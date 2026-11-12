@@ -128,13 +128,18 @@ Deno.serve(async (req) => {
     // The enquiry: a lead with no campaign, matched on the caller's number so
     // someone who rings twice doesn't become two records.
     if (fromNumber) {
-      const { data: existingLead } = await supabase
+      // maybeSingle() errors when a caller already has more than one enquiry,
+      // and the ignored error read as "none found", so every event inserted
+      // another row. One call produced four.
+      const { data: existingLeads } = await supabase
         .from("leads")
         .select("id")
         .eq("user_id", inboundUserId)
         .eq("phone", fromNumber)
         .is("campaign_id", null)
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const existingLead = existingLeads?.[0];
 
       const leadPatch: Record<string, unknown> = {
         retell_call_id: callId,

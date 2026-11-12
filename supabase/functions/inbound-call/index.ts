@@ -105,6 +105,10 @@ Deno.serve(async (req) => {
           line_name: number.label ?? "",
           caller_name: callerName,
           caller_known: callerKnown,
+          current_datetime: new Intl.DateTimeFormat("en-GB", {
+            weekday: "long", day: "numeric", month: "long", year: "numeric",
+            hour: "2-digit", minute: "2-digit", timeZone: "Europe/London",
+          }).format(new Date()),
         },
       },
     });

@@ -53,6 +53,7 @@ export const LIVE_TOOLS: LiveTool[] = [
       properties: {
         message: { type: "string", description: "What they want passed on, in their own words." },
         name: { type: "string", description: "Their name, if they gave it." },
+        email: { type: "string", description: "Their email, if they gave it. Spell it back before sending." },
         from_number: { type: "string", description: "From {{from_number}}." },
         call_id: { type: "string", description: "From {{call_id}}." },
       },
@@ -64,16 +65,24 @@ export const LIVE_TOOLS: LiveTool[] = [
     label: "Arrange a callback",
     summary: "Records that the caller wants ringing back, and when.",
     description:
-      "Arrange for someone to ring the caller back. Agree roughly when first, then call this.",
+      "Arrange for someone to ring the caller back. Agree a time first, work out the actual " +
+      "date and time from {{current_datetime}}, confirm it back to them, then call this.",
     parameters: {
       type: "object",
       properties: {
-        when: { type: "string", description: "When they would like ringing back, in their own words." },
+        when: {
+          type: "string",
+          description:
+            "The actual date and time, resolved from {{current_datetime}}, e.g. " +
+            "'Thursday 13 November at 12:40'. Never pass a relative phrase like 'tomorrow'.",
+        },
         name: { type: "string", description: "Their name, if they gave it." },
+        email: { type: "string", description: "Their email, if they gave it. Spell it back before sending." },
+        topic: { type: "string", description: "What they want to discuss." },
         from_number: { type: "string", description: "From {{from_number}}." },
         call_id: { type: "string", description: "From {{call_id}}." },
       },
-      required: [],
+      required: ["when"],
     },
   },
 ];
