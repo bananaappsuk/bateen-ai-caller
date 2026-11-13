@@ -194,3 +194,18 @@ export async function syncPhoneNumbers(): Promise<SyncResult> {
   }
   return data as SyncResult;
 }
+
+/**
+ * The number an agent should dial out from: its own inbound line if it has
+ * one, so a client's calls show their number and a call back reaches them.
+ */
+export async function callerIdForAgent(agentRowId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("inbound_numbers")
+    .select("phone_number")
+    .eq("agent_id", agentRowId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error) throw asError(error);
+  return (data?.[0]?.phone_number as string | undefined) ?? null;
+}

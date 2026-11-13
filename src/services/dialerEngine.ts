@@ -18,6 +18,7 @@ import { getAgent } from "@/services/agentsService";
 import { listLeads, updateLead, type LeadRow, type LeadStatus } from "@/services/leadsService";
 import { reserveCallCredit, releaseCallCredit, chargeForCall } from "@/services/creditsService";
 import { PLATFORM_TWILIO_NUMBER } from "@/lib/platformConfig";
+import { callerIdForAgent } from "@/services/inboundService";
 import { getDevUser } from "@/lib/devAuth";
 import { isWithinCallingHours, type CallingHours } from "@/lib/callingHours";
 import { loadDynamicVars } from "@/lib/dynamicVars";
@@ -362,13 +363,15 @@ async function runTick(campaignId: string, deps: DialerDeps): Promise<void> {
         const pending = leads.filter((l) => l.status === "pending");
         const queue = [...retryDue, ...pending].slice(0, freeSlots);
         if (queue.length > 0) {
+          const fromNumber =
+            (await callerIdForAgent(agent.id).catch(() => null)) ?? PLATFORM_TWILIO_NUMBER;
           deps.log(`[BATCH] Dispatching ${queue.length} call(s) (slots: ${freeSlots}).`, "info");
           for (const lead of queue) {
             // Each call is authorized individually against the live balance
             // (see dispatchCall's reserveCallCredit) — stop scheduling the
             // moment one comes back unauthorized, rather than trusting a
             // single balance snapshot for the whole batch.
-            const result = await dispatchCall(campaign, agent, PLATFORM_TWILIO_NUMBER, lead, deps);
+            const result = await dispatchCall(campaign, agent, fromNumber, lead, deps);
             if (result === "insufficient_credits") {
               deps.log("[BLOCKED] Out of credits — pausing campaign.", "error");
               await updateCampaign(campaignId, { status: "paused", paused_reason: "out_of_credits" });

@@ -5,6 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { retellService } from "./retellService";
 import { asError } from "@/lib/functionErrors";
+import { normalizeUkPhone } from "@/lib/phone";
+import { callerIdForAgent } from "@/services/inboundService";
+import { PLATFORM_TWILIO_NUMBER } from "@/lib/platformConfig";
 
 export type AgentRow = Database["public"]["Tables"]["agents"]["Row"];
 export type AgentInsert = Database["public"]["Tables"]["agents"]["Insert"];
@@ -82,4 +85,28 @@ export async function syncAgentsFromRetell(): Promise<{ synced: number }> {
     }
   }
   return { synced };
+}
+
+/**
+ * Rings a number and connects it to this agent, so it can be heard the way a
+ * real caller hears it. The browser test call only proves the agent thinks;
+ * this proves the phone path, the voice and the caller id.
+ */
+export async function callMeFromAgent(
+  agent: AgentRow,
+  toNumber: string,
+): Promise<{ callId: string; fromNumber: string }> {
+  if (!agent.retell_agent_id) throw new Error("This agent isn't synced with Retell yet.");
+  const to = normalizeUkPhone(toNumber);
+  if (!to) throw new Error("Enter a valid UK number, e.g. 07700 900123.");
+
+  const fromNumber = (await callerIdForAgent(agent.id).catch(() => null)) ?? PLATFORM_TWILIO_NUMBER;
+  const call = await retellService.createPhoneCall({
+    from_number: fromNumber,
+    to_number: to,
+    override_agent_id: agent.retell_agent_id,
+    metadata: { test: true, agentRowId: agent.id },
+  } as never);
+  if (!call?.call_id) throw new Error("Retell did not start the call.");
+  return { callId: call.call_id, fromNumber };
 }

@@ -23,6 +23,17 @@ import {
   Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { rerunCampaign, countRerunnable, testCampaignCall, type RerunScope } from "@/services/campaignsService";
+import { RotateCcw, PhoneCall } from "lucide-react";
 
 
 const leadStatusStyles: Record<LeadStatus, string> = {
@@ -78,6 +89,14 @@ const CampaignDetailPage = () => {
   const [agent, setAgent] = useState<AgentRow | null>(null);
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rerunOpen, setRerunOpen] = useState(false);
+  const [rerunScope, setRerunScope] = useState<RerunScope>("no_answer");
+  const [rerunCounts, setRerunCounts] = useState<Record<RerunScope, number> | null>(null);
+  const [rerunning, setRerunning] = useState(false);
+  const [testOpen, setTestOpen] = useState(false);
+  const [testNumber, setTestNumber] = useState("");
+  const [testing, setTesting] = useState(false);
+
 
   const callingHours = useMemo(() => loadCallingHours(), []);
   const dnc = useMemo(() => loadDnc(), []);
@@ -140,6 +159,44 @@ const CampaignDetailPage = () => {
     }
   };
 
+  const openRerun = async () => {
+    setRerunOpen(true);
+    setRerunCounts(await countRerunnable(id!).catch(() => null));
+  };
+
+  const handleRerun = async () => {
+    setRerunning(true);
+    try {
+      const { reset } = await rerunCampaign(id!, rerunScope);
+      if (reset === 0) {
+        toast("Nothing to re-dial for that choice.");
+      } else {
+        toast.success(`${reset} lead${reset === 1 ? "" : "s"} queued. Press Start to dial them.`);
+        setRerunOpen(false);
+        reload();
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not queue the leads.");
+    } finally {
+      setRerunning(false);
+    }
+  };
+
+  const handleTestCall = async () => {
+    if (!campaign) return;
+    setTesting(true);
+    try {
+      const { fromNumber } = await testCampaignCall(campaign, testNumber);
+      toast.success(`Calling you now from ${fromNumber}.`);
+      setTestOpen(false);
+      setTestNumber("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start the test call.");
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const canStart = status === "draft" || status === "paused";
   const called = campaign?.called_leads ?? 0;
   const total = campaign?.total_leads ?? leads.length;
@@ -195,6 +252,18 @@ const CampaignDetailPage = () => {
                       <Pause className="h-4 w-4" /> Pause
                     </button>
                   ) : null}
+                  <button
+                    onClick={() => setTestOpen(true)}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
+                  >
+                    <PhoneCall className="h-4 w-4" /> Test call
+                  </button>
+                  <button
+                    onClick={openRerun}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
+                  >
+                    <RotateCcw className="h-4 w-4" /> Re-run
+                  </button>
                 </div>
               </div>
 
@@ -349,6 +418,80 @@ const CampaignDetailPage = () => {
           )}
         </div>
       
+    
+      <Dialog open={rerunOpen} onOpenChange={setRerunOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Re-run this campaign</DialogTitle>
+            <DialogDescription>
+              This puts finished leads back in the queue so they are dialled again. People on the
+              do-not-call list are never included.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="rerunScope">Who should we call again?</Label>
+            <Select value={rerunScope} onValueChange={(v) => setRerunScope(v as RerunScope)}>
+              <SelectTrigger id="rerunScope" className="rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no_answer">
+                  Only those who never answered{rerunCounts ? ` (${rerunCounts.no_answer})` : ""}
+                </SelectItem>
+                <SelectItem value="failed">
+                  Only failed calls{rerunCounts ? ` (${rerunCounts.failed})` : ""}
+                </SelectItem>
+                <SelectItem value="all">
+                  Everyone already called{rerunCounts ? ` (${rerunCounts.all})` : ""}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-slate-500">
+              Queuing does not dial anyone. Press Start when you are ready.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setRerunOpen(false)} className="rounded-xl">Cancel</Button>
+            <Button
+              onClick={handleRerun}
+              disabled={rerunning}
+              className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-90 rounded-xl"
+            >
+              {rerunning ? "Queuing…" : "Queue them"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={testOpen} onOpenChange={setTestOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Test this campaign</DialogTitle>
+            <DialogDescription>
+              We will ring you with this campaign's agent so you can hear the script before any
+              leads are called. Your lead list is not touched. This uses one calling credit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="testNumber">Your number</Label>
+            <Input
+              id="testNumber"
+              value={testNumber}
+              onChange={(e) => setTestNumber(e.target.value)}
+              placeholder="07700 900123"
+              className="rounded-xl"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setTestOpen(false)} className="rounded-xl">Cancel</Button>
+            <Button
+              onClick={handleTestCall}
+              disabled={testing || !testNumber.trim()}
+              className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-90 rounded-xl"
+            >
+              {testing ? "Calling…" : "Call me"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

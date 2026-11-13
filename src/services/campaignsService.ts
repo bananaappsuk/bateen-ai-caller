@@ -2,7 +2,7 @@
 // config (concurrency, retry policy, qualification criteria) and live counters.
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { getAgent } from "./agentsService";
+import { getAgent, callMeFromAgent } from "./agentsService";
 import { getBillingAccount } from "./creditsService";
 import { asError } from "@/lib/functionErrors";
 
@@ -81,4 +81,63 @@ export async function canStartCampaign(campaign: CampaignRow): Promise<CampaignS
   }
 
   return { ok: true };
+}
+
+export type RerunScope = "all" | "no_answer" | "failed";
+
+/** Lead statuses each scope puts back in the queue. */
+const RERUN_STATUSES: Record<RerunScope, string[]> = {
+  all: ["completed", "failed", "unresponsive", "no-answer"],
+  no_answer: ["unresponsive", "no-answer"],
+  failed: ["failed"],
+};
+
+/**
+ * Puts finished leads back in the queue.
+ *
+ * The dialer only picks up pending, failed or no-answer leads under
+ * max_attempts, so once everyone is completed, pressing Start dials nobody and
+ * says nothing. Rerunning means resetting the leads, not restarting the
+ * campaign. Never touches dnc.
+ */
+export async function rerunCampaign(
+  campaignId: string,
+  scope: RerunScope,
+): Promise<{ reset: number }> {
+  const { data, error } = await supabase
+    .from("leads")
+    .update({ status: "pending", attempt_count: 0, next_retry_at: null, unresponsive_at: null })
+    .eq("campaign_id", campaignId)
+    .in("status", RERUN_STATUSES[scope])
+    .neq("status", "dnc")
+    .select("id");
+  if (error) throw asError(error);
+  return { reset: data?.length ?? 0 };
+}
+
+/** How many leads each scope would re-dial, so the user sees it before agreeing. */
+export async function countRerunnable(campaignId: string): Promise<Record<RerunScope, number>> {
+  const { data, error } = await supabase
+    .from("leads")
+    .select("status")
+    .eq("campaign_id", campaignId);
+  if (error) throw asError(error);
+  const rows = data ?? [];
+  const count = (scope: RerunScope) =>
+    rows.filter((r) => RERUN_STATUSES[scope].includes(String(r.status))).length;
+  return { all: count("all"), no_answer: count("no_answer"), failed: count("failed") };
+}
+
+/**
+ * Dials one number with this campaign's agent, without touching its leads —
+ * so the script can be heard before a list of real people is called.
+ */
+export async function testCampaignCall(
+  campaign: CampaignRow,
+  toNumber: string,
+): Promise<{ callId: string; fromNumber: string }> {
+  if (!campaign.agent_id) throw new Error("This campaign has no agent assigned.");
+  const agent = await getAgent(campaign.agent_id);
+  if (!agent) throw new Error("The campaign's agent no longer exists.");
+  return callMeFromAgent(agent, toNumber);
 }

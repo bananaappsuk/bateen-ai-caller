@@ -11,6 +11,7 @@ import {
   syncAgentsFromRetell,
   deleteAgent as deleteAgentRow,
   type AgentRow,
+  callMeFromAgent,
 } from "@/services/agentsService";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -38,6 +39,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCredits } from "@/lib/creditsContext";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 
 const AIAgentsPage = () => {
@@ -52,6 +55,9 @@ const AIAgentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [callMeAgent, setCallMeAgent] = useState<AgentRow | null>(null);
+  const [callMeNumber, setCallMeNumber] = useState("");
+  const [callingMe, setCallingMe] = useState(false);
   const [activeCallId, setActiveCallId] = useState<string | null>(null);
   const retellClientRef = useRef<RetellWebClient | null>(null);
   const activeAgentIdRef = useRef<string | null>(null);
@@ -119,6 +125,21 @@ const AIAgentsPage = () => {
     activeAgentIdRef.current = null;
     setActiveCallId(null);
     setTestingId(null);
+  };
+
+  const handleCallMe = async () => {
+    if (!callMeAgent) return;
+    setCallingMe(true);
+    try {
+      const { fromNumber } = await callMeFromAgent(callMeAgent, callMeNumber);
+      toast.success(`Calling you now from ${fromNumber}.`);
+      setCallMeAgent(null);
+      setCallMeNumber("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start the call.");
+    } finally {
+      setCallingMe(false);
+    }
   };
 
   const handleTest = async (agent: AgentRow) => {
@@ -274,7 +295,7 @@ const AIAgentsPage = () => {
                     {agent.deleted_in_retell && (
                       <div className="text-xs text-amber-600 mb-4">Removed in Retell</div>
                     )}
-                    <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-100">
+                    <div className="grid grid-cols-4 gap-1 pt-3 border-t border-slate-100">
                       <button
                         onClick={() => navigate(`/ai-agents/${agent.id}/edit`)}
                         disabled={!agent.retell_agent_id}
@@ -296,6 +317,12 @@ const AIAgentsPage = () => {
                         )}
                       </button>
                       <button
+                        onClick={() => setCallMeAgent(agent)}
+                        className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <PhoneCall className="h-3.5 w-3.5" /> Call me
+                      </button>
+                      <button
                         onClick={() => handleDelete(agent)}
                         className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
                       >
@@ -311,6 +338,40 @@ const AIAgentsPage = () => {
       
 
       {/* Active call indicator */}
+      <Dialog open={Boolean(callMeAgent)} onOpenChange={(o) => !o && setCallMeAgent(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Hear {callMeAgent?.name} on the phone</DialogTitle>
+            <DialogDescription>
+              We will ring you and connect you to this agent, exactly as a real caller hears it.
+              This uses one calling credit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="callMeNumber">Your number</Label>
+            <Input
+              id="callMeNumber"
+              value={callMeNumber}
+              onChange={(e) => setCallMeNumber(e.target.value)}
+              placeholder="07700 900123"
+              className="rounded-xl"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setCallMeAgent(null)} className="rounded-xl">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCallMe}
+              disabled={callingMe || !callMeNumber.trim()}
+              className="bg-gradient-to-r from-[#00D4FF] to-[#FF6FD8] text-white hover:opacity-90 rounded-xl"
+            >
+              {callingMe ? <Loader2 className="h-4 w-4 animate-spin" /> : "Call me"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!activeCallId} onOpenChange={(o) => !o && stopActiveCall()}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
