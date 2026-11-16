@@ -113,6 +113,11 @@ Deno.serve(async (req) => {
       // empty cannot blank out a name an earlier event already stored.
       ...(agentName ? { agent_name: agentName } : {}),
       status: (call.call_status as string) ?? "registered",
+      ...(startTs ? { started_at: new Date(startTs).toISOString() } : {}),
+      ...(endTs ? { ended_at: new Date(endTs).toISOString() } : {}),
+      ...(typeof (call.call_cost as { combined_cost?: number } | undefined)?.combined_cost === "number"
+        ? { cost_cents: Math.round((call.call_cost as { combined_cost: number }).combined_cost) }
+        : {}),
       transcript: (call.transcript as string) ?? null,
       recording_url: (call.recording_url as string) ?? null,
       summary: (analysis.call_summary as string) ?? null,
@@ -189,6 +194,12 @@ Deno.serve(async (req) => {
 
   // Enrich the calls row.
   if (callId) {
+    const startTs = call.start_timestamp as number | undefined;
+    const endTs = call.end_timestamp as number | undefined;
+    // Retell bills in cents; combined_cost already covers voice engine, TTS,
+    // LLM and knowledge-base usage for the whole call.
+    const combined = (call.call_cost as { combined_cost?: number } | undefined)?.combined_cost;
+
     await supabase
       .from("calls")
       .update({
@@ -198,6 +209,10 @@ Deno.serve(async (req) => {
         summary: (analysis.call_summary as string) ?? null,
         call_successful: (analysis.call_successful as boolean) ?? null,
         has_transcript: !!call.transcript,
+        ...(startTs ? { started_at: new Date(startTs).toISOString() } : {}),
+        ...(endTs ? { ended_at: new Date(endTs).toISOString() } : {}),
+        ...(startTs && endTs && endTs > startTs ? { duration_ms: endTs - startTs } : {}),
+        ...(typeof combined === "number" ? { cost_cents: Math.round(combined) } : {}),
       })
       .eq("retell_call_id", callId);
   }

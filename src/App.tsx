@@ -17,6 +17,7 @@ import DashboardPage from "./pages/DashboardPage.tsx";
 import AIAgentsPage from "./pages/AIAgentsPage.tsx";
 import CreateAgentPage from "./pages/CreateAgentPage.tsx";
 import EditAgentPage from "./pages/EditAgentPage.tsx";
+import OutboundCallsPage from "./pages/OutboundCallsPage";
 import CampaignsPage from "./pages/CampaignsPage.tsx";
 import CreateCampaignPage from "./pages/CreateCampaignPage.tsx";
 import CampaignDetailPage from "./pages/CampaignDetailPage.tsx";
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/campaigns" element={P(<CampaignsPage />)} />
               <Route path="/campaigns/create" element={P(<CreateCampaignPage />)} />
               <Route path="/campaigns/:id" element={P(<CampaignDetailPage />)} />
+              <Route path="/dashboard/calls" element={P(<OutboundCallsPage />)} />
               <Route path="/dashboard/campaigns" element={P(<CampaignsPage />)} />
               <Route path="/dashboard/campaigns/create" element={P(<CreateCampaignPage />)} />
               <Route path="/dashboard/campaigns/:id" element={P(<CampaignDetailPage />)} />
