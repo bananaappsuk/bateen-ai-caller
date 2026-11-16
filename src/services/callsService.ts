@@ -7,6 +7,7 @@ export interface OutboundCall {
   to_number: string | null;
   from_number: string | null;
   status: string | null;
+  call_type: string | null;
   duration_ms: number | null;
   cost_cents: number | null;
   agent_name: string | null;
@@ -23,7 +24,7 @@ export async function listOutboundCalls(limit = 200): Promise<OutboundCall[]> {
   const { data, error } = await supabase
     .from("calls")
     .select(
-      "id, retell_call_id, to_number, from_number, status, duration_ms, cost_cents, agent_name, lead_name, summary, transcript, recording_url, call_successful, campaign_id, created_at",
+      "id, retell_call_id, to_number, from_number, status, call_type, duration_ms, cost_cents, agent_name, lead_name, summary, transcript, recording_url, call_successful, campaign_id, created_at",
     )
     .eq("direction", "outbound")
     .order("created_at", { ascending: false })

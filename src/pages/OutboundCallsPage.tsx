@@ -155,7 +155,9 @@ const OutboundCallsPage = () => {
                   <tbody className="divide-y divide-slate-100">
                     {filtered.map((c) => (
                       <tr key={c.id} className="hover:bg-slate-50/60">
-                        <td className="px-6 py-3 font-medium text-slate-900">{c.to_number ?? "—"}</td>
+                        <td className="px-6 py-3 font-medium text-slate-900">
+                          {c.to_number ?? (c.call_type === "web_call" ? "Browser test" : "—")}
+                        </td>
                         <td className="px-6 py-3 text-slate-600">{c.lead_name ?? "—"}</td>
                         <td className="px-6 py-3 text-slate-600">{c.agent_name ?? "—"}</td>
                         <td className="px-6 py-3">

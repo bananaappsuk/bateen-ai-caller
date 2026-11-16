@@ -200,21 +200,61 @@ Deno.serve(async (req) => {
     // LLM and knowledge-base usage for the whole call.
     const combined = (call.call_cost as { combined_cost?: number } | undefined)?.combined_cost;
 
-    await supabase
+    const row = {
+      status: call.call_status as string,
+      transcript: (call.transcript as string) ?? null,
+      recording_url: (call.recording_url as string) ?? null,
+      summary: (analysis.call_summary as string) ?? null,
+      call_successful: (analysis.call_successful as boolean) ?? null,
+      has_transcript: !!call.transcript,
+      ...(startTs ? { started_at: new Date(startTs).toISOString() } : {}),
+      ...(endTs ? { ended_at: new Date(endTs).toISOString() } : {}),
+      ...(startTs && endTs && endTs > startTs ? { duration_ms: endTs - startTs } : {}),
+      ...(typeof combined === "number" ? { cost_cents: Math.round(combined) } : {}),
+    };
+
+    const { data: updated } = await supabase
       .from("calls")
-      .update({
-        status: call.call_status as string,
-        transcript: (call.transcript as string) ?? null,
-        recording_url: (call.recording_url as string) ?? null,
-        summary: (analysis.call_summary as string) ?? null,
-        call_successful: (analysis.call_successful as boolean) ?? null,
-        has_transcript: !!call.transcript,
-        ...(startTs ? { started_at: new Date(startTs).toISOString() } : {}),
-        ...(endTs ? { ended_at: new Date(endTs).toISOString() } : {}),
-        ...(startTs && endTs && endTs > startTs ? { duration_ms: endTs - startTs } : {}),
-        ...(typeof combined === "number" ? { cost_cents: Math.round(combined) } : {}),
-      })
-      .eq("retell_call_id", callId);
+      .update(row)
+      .eq("retell_call_id", callId)
+      .select("id");
+
+    // Only the dialer creates a row up front. A call placed any other way --
+    // Call me, a campaign test, anything started outside the dialer -- had no
+    // row to update and so never appeared in the product at all.
+    if (!updated || updated.length === 0) {
+      const ownerId =
+        (metadata.userId as string | undefined) ??
+        (await (async () => {
+          const retellAgentId = call.agent_id as string | undefined;
+          if (!retellAgentId) return null;
+          const { data } = await supabase
+            .from("agents")
+            .select("user_id, name")
+            .eq("retell_agent_id", retellAgentId)
+            .maybeSingle();
+          return (data?.user_id as string | undefined) ?? null;
+        })());
+
+      if (ownerId) {
+        const { data: agentRow } = await supabase
+          .from("agents")
+          .select("name")
+          .eq("retell_agent_id", (call.agent_id as string) ?? "")
+          .maybeSingle();
+        await supabase.from("calls").insert({
+          retell_call_id: callId,
+          user_id: ownerId,
+          direction: (call.direction as string) ?? "outbound",
+          call_type: (call.call_type as string) ?? "phone_call",
+          from_number: (call.from_number as string) ?? null,
+          to_number: (call.to_number as string) ?? null,
+          agent_id: (call.agent_id as string) ?? null,
+          agent_name: (agentRow?.name as string | undefined) ?? null,
+          ...row,
+        });
+      }
+    }
   }
 
   if (lead) {
