@@ -48,6 +48,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import VoicePreview from "@/components/VoicePreview";
+import VoiceAvatar from "@/components/VoiceAvatar";
 
 
 const PRESETS = [
@@ -89,6 +91,7 @@ const CreateAgentPage = () => {
   const [form, setForm] = useState(defaultForm);
   const [voices, setVoices] = useState<RetellVoice[]>([]);
   const [loadingVoices, setLoadingVoices] = useState(true);
+  const selectedVoice = voices.find((v) => v.voice_id === form.voiceId);
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const { mode, isInbound } = useCallMode();
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
@@ -337,10 +340,15 @@ const CreateAgentPage = () => {
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading voices from Retell…
                 </div>
               ) : (
-                <Select value={form.voiceId} onValueChange={(v) => setForm({ ...form, voiceId: v })}>
-                  <SelectTrigger id="voice">
-                    <SelectValue placeholder="Choose a voice" />
-                  </SelectTrigger>
+                <div className="flex items-center gap-2">
+                  <VoiceAvatar voice={selectedVoice} />
+                  <Select
+                    value={form.voiceId}
+                    onValueChange={(v) => setForm({ ...form, voiceId: v })}
+                  >
+                    <SelectTrigger id="voice" className="flex-1">
+                      <SelectValue placeholder="Choose a voice" />
+                    </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
                     {myVoices.length > 0 && (
                       <SelectGroup>
@@ -363,8 +371,10 @@ const CreateAgentPage = () => {
                         </SelectItem>
                       ))}
                     </SelectGroup>
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                  <VoicePreview url={selectedVoice?.preview_audio_url} label={selectedVoice?.voice_name} />
+                </div>
               )}
             </div>
 

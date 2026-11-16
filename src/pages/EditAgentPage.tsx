@@ -55,6 +55,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import VoicePreview from "@/components/VoicePreview";
+import VoiceAvatar from "@/components/VoiceAvatar";
 
 
 const AMBIENCES = [
@@ -98,6 +100,7 @@ const EditAgentPage = () => {
     transferToHuman: false,
     transferNumber: "",
   });
+  const selectedVoice = voices.find((v) => v.voice_id === form.voiceId);
 
   useEffect(() => {
     if (!user) navigate("/login", { replace: true });
@@ -283,10 +286,12 @@ const EditAgentPage = () => {
                       + Use your own voice
                     </button>
                   </div>
-                  <Select value={form.voiceId} onValueChange={(v) => setForm({ ...form, voiceId: v })}>
-                    <SelectTrigger id="voice">
-                      <SelectValue placeholder="Choose a voice" />
-                    </SelectTrigger>
+                  <div className="flex items-center gap-2">
+                    <VoiceAvatar voice={selectedVoice} />
+                    <Select value={form.voiceId} onValueChange={(v) => setForm({ ...form, voiceId: v })}>
+                      <SelectTrigger id="voice" className="flex-1">
+                        <SelectValue placeholder="Choose a voice" />
+                      </SelectTrigger>
                     <SelectContent className="max-h-[300px]">
                       {voices.some((v) => v.voice_type === "custom") && (
                         <SelectGroup>
@@ -315,8 +320,10 @@ const EditAgentPage = () => {
                             </SelectItem>
                           ))}
                       </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                      </SelectContent>
+                    </Select>
+                    <VoicePreview url={selectedVoice?.preview_audio_url} label={selectedVoice?.voice_name} />
+                  </div>
                 </div>
 
                 {/* Playbook and live tools — same two controls as creation */}
